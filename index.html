@@ -239,7 +239,8 @@ const TEACHER = {
 /* عاوز تغيّر الصورة؟ ابعتلي الصورة الجديدة وهعمل تضمين base64 جديد بنفس الطريقة */
 /* ===================================================== */
 
-let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'' };
+let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'', studentSearch:'' };
+let waBulkRows = [];
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -330,9 +331,9 @@ function examsAvg(exams){
 /* نظام النقاط: كل درجة امتحان بتاخد نقاط/نجوم حسب نسبتها */
 function examPoints(score, max){
   const pct = (Number(score)/Number(max))*100;
-  if(pct>=90) return 3;
-  if(pct>=75) return 2;
-  if(pct>=50) return 1;
+  if(pct=100) return 3;
+  if(pct>=95) return 2;
+  if(pct>=90) return 1;
   return 0;
 }
 function examStars(score, max){
@@ -367,6 +368,88 @@ function paymentsSummary(payments){
   return {paid,due};
 }
 function fmtDate(d){ if(!d) return '—'; return d; }
+
+/* رسم بياني خطي لمستوى الطالب في الامتحانات عبر الوقت (نسبة مئوية) */
+function examsChartSVG(exams){
+  exams = exams||[];
+  if(exams.length < 2){
+    return `<div class="empty">سجّل امتحانين على الأقل عشان يظهر الرسم البياني</div>`;
+  }
+  const recent = exams.slice(-12);
+  const W = 600, H = 170, padL = 32, padR = 14, padT = 16, padB = 30;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const pts = recent.map(e => Math.max(0, Math.min(100, Math.round((Number(e.score)/Number(e.max))*100))));
+  const n = pts.length;
+  const stepX = n>1 ? innerW/(n-1) : 0;
+  const coords = pts.map((p,i)=>{
+    const x = padL + i*stepX;
+    const y = padT + innerH - (p/100)*innerH;
+    return [x,y];
+  });
+  const pathD = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+  const areaD = pathD + ` L${coords[n-1][0].toFixed(1)},${(padT+innerH).toFixed(1)} L${coords[0][0].toFixed(1)},${(padT+innerH).toFixed(1)} Z`;
+  const gridVals = [0,50,100];
+  const gridLines = gridVals.map(v=>{
+    const y = padT+innerH-(v/100)*innerH;
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${v}%</text>`;
+  }).join('');
+  const dots = coords.map((c,i)=>{
+    const pct = pts[i];
+    const color = pct>=75?'var(--good)':pct>=50?'var(--late)':'var(--warn)';
+    return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+            <text x="${c[0].toFixed(1)}" y="${(c[1]-9).toFixed(1)}" font-size="9.5" font-weight="800" fill="var(--ink)" text-anchor="middle">${pct}%</text>`;
+  }).join('');
+  const labels = recent.map((e,i)=>{
+    const x = coords[i][0];
+    const lbl = (e.name||'').length>7 ? (e.name||'').slice(0,6)+'…' : (e.name||'');
+    return `<text x="${x.toFixed(1)}" y="${H-8}" font-size="9" fill="var(--muted)" text-anchor="middle">${lbl}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin:4px 0 16px;">
+    ${gridLines}
+    <path d="${areaD}" fill="var(--brass-light)" opacity="0.18"/>
+    <path d="${pathD}" fill="none" stroke="var(--brass)" stroke-width="2.5"/>
+    ${dots}
+    ${labels}
+  </svg>`;
+}
+
+/* رسم بياني بالأعمدة لعدد مرات الحضور/الغياب/التأخير */
+function attendanceChartSVG(att){
+  att = att||[];
+  if(!att.length){
+    return `<div class="empty">لسه مفيش سجل حضور يتعمله رسم بياني</div>`;
+  }
+  const present = att.filter(a=>a.status==='present').length;
+  const absent = att.filter(a=>a.status==='absent').length;
+  const late = att.filter(a=>a.status==='late').length;
+  const max = Math.max(present, absent, late, 1);
+  const W = 600, H = 150, padT = 18, padB = 28, barW = 76, gap = 46;
+  const baseY = H - padB;
+  const scale = (H - padT - padB) / max;
+  const bars = [
+    {label:'حاضر', val:present, color:'var(--good)'},
+    {label:'غائب', val:absent, color:'var(--warn)'},
+    {label:'متأخر', val:late, color:'var(--late)'}
+  ];
+  const totalW = bars.length*barW + (bars.length-1)*gap;
+  const startX = (W-totalW)/2;
+  const barsSvg = bars.map((b,i)=>{
+    const x = startX + i*(barW+gap);
+    const h = b.val*scale;
+    const y = baseY - h;
+    return `
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(h,2).toFixed(1)}" rx="7" fill="${b.color}"/>
+      <text x="${(x+barW/2).toFixed(1)}" y="${(y-8).toFixed(1)}" font-size="13.5" font-weight="800" fill="var(--ink)" text-anchor="middle">${b.val}</text>
+      <text x="${(x+barW/2).toFixed(1)}" y="${H-8}" font-size="11.5" fill="var(--muted)" text-anchor="middle">${b.label}</text>
+    `;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin:4px 0 16px;">
+    <line x1="16" y1="${baseY}" x2="${W-16}" y2="${baseY}" stroke="var(--line)" stroke-width="1.5"/>
+    ${barsSvg}
+  </svg>`;
+}
+
 /* بناء رابط واتساب مع رسالة جاهزة — بيفتح واتساب جاهز للإرسال بضغطة واحدة */
 function normalizePhone(phone){
   if(!phone) return '';
@@ -491,14 +574,14 @@ async function renderHome(){
     <div class="hero">
       <div class="eyebrow">بوابة أولياء الأمور</div>
       <h1>اطمئن على مستوى ابنك أول بأول</h1>
-      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، وحالة المصروفات.</p>
+      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، .</p>
       <form class="code-form" id="codeForm">
         <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
         <button class="btn btn-brass" type="submit">عرض الكشف</button>
       </form>
       <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
     </div>
-    <div class="footer-link" id="teacherLink">دخول المعلم</div>
+    <div class="footer-link" id="teacherLink">مستر فادي فرح</div>
   `;
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -547,6 +630,7 @@ function renderReport(){
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> سجل الحضور والغياب</div>
+      ${attendanceChartSVG(s.attendance)}
       ${ (s.attendance&&s.attendance.length) ?
         s.attendance.slice().reverse().map(a=>`
           <div class="row"><span>${fmtDate(a.date)}</span><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span></div>
@@ -556,6 +640,7 @@ function renderReport(){
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> الامتحانات</div>
+      ${examsChartSVG(s.exams)}
       ${ (s.exams&&s.exams.length) ? `
         <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقييم</th></tr></thead>
         <tbody>
@@ -664,25 +749,42 @@ async function renderTeacherPanel(){
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
-      ${ state.index.length ? state.index.map(s=>`
-        <div class="student-pick">
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${s.photo
-              ? `<img src="${s.photo}" alt="${s.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);flex-shrink:0;">`
-              : `<div style="width:38px;height:38px;border-radius:50%;background:var(--paper2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
-            }
-            <div><div class="nm">${s.risk?'🚨 ':''}${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="cd">${s.code}</span>
-            <button class="btn btn-ghost btn-sm" data-edit="${s.code}">إدارة</button>
-          </div>
+      <div class="card-title"><span class="dot"></span> إرسال واتساب جماعي (أسرع من واحد واحد)</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">اختار نوع الرسالة، وهنجهزلك قايمة بكل أولياء الأمور اللي عندهم بيانات — تدوس "ابعت" بالترتيب وتفتحلك واتساب جاهز، من غير ما تدخل على بروفايل كل طالب لوحده.</p>
+      <div class="form-grid" style="margin-bottom:8px;">
+        <div class="field">
+          <label>نوع الرسالة</label>
+          <select id="waBulkType">
+            <option value="attendance">آخر حالة حضور مسجّلة</option>
+            <option value="exam">آخر درجة امتحان مسجّلة</option>
+            <option value="payment">آخر حالة مصروفات مسجّلة</option>
+            <option value="custom">رسالة عامة (نفس النص للكل)</option>
+          </select>
         </div>
-      `).join('') : `<div class="empty">لسه مفيش طلاب — ضيف أول طالب من فوق</div>` }
+      </div>
+      <div id="waBulkCustomWrap" style="display:none;margin-bottom:10px;">
+        <div class="field"><label>نص الرسالة (هيتحط بعد اسم الطالب تلقائيًا)</label>
+          <textarea id="waBulkCustomText" rows="3" placeholder="مثال: تذكير بموعد امتحان الأسبوع الجاي يوم الخميس الساعة 5" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
+        </div>
+      </div>
+      <button class="btn btn-brass btn-sm" id="waBulkBuildBtn" style="margin-bottom:10px;">تجهيز القايمة</button>
+      <div id="waBulkList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
+      <div class="field" style="margin-bottom:12px;">
+        <input type="text" id="studentSearchInput" placeholder="ابحث بالاسم أو الكود..." value="${(state.studentSearch||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13.5px;color:var(--ink);">
+      </div>
+      <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch))}</div>
     </div>
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
+  document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
+    state.studentSearch = e.target.value;
+    document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch));
+    bindStudentListEvents();
+  });
   document.getElementById('addForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const name = document.getElementById('newName').value.trim();
@@ -764,6 +866,106 @@ async function renderTeacherPanel(){
     document.getElementById('bulkGrades').value='';
   });
 
+  document.getElementById('waBulkType').addEventListener('change', (e)=>{
+    document.getElementById('waBulkCustomWrap').style.display = e.target.value==='custom' ? 'block' : 'none';
+  });
+
+  document.getElementById('waBulkBuildBtn').addEventListener('click', async ()=>{
+    const type = document.getElementById('waBulkType').value;
+    const customText = document.getElementById('waBulkCustomText').value.trim();
+    if(type==='custom' && !customText){ toast('اكتب نص الرسالة الأول'); return; }
+    const listEl = document.getElementById('waBulkList');
+    listEl.innerHTML = `<div class="empty">جاري التجهيز...</div>`;
+    const idx = await getIndex();
+    const rows = [];
+    for(const entry of idx){
+      const st = await getStudent(entry.code);
+      if(!st || !st.parentPhone) continue;
+      let msg = null;
+      if(type==='attendance'){
+        const att = st.attendance||[];
+        if(!att.length) continue;
+        const last = att[att.length-1];
+        const statusTxt = last.status==='present' ? 'كان حاضر' : last.status==='absent' ? 'كان غايب' : 'حضر متأخر';
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${last.date||'—'}: الطالب ${statusTxt}.\n— ${TEACHER.name}`;
+      } else if(type==='exam'){
+        const exams = st.exams||[];
+        if(!exams.length) continue;
+        const last = exams[exams.length-1];
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nالطالب جاب في ${last.name}: ${last.score} من ${last.max}.\n— ${TEACHER.name}`;
+      } else if(type==='payment'){
+        const pays = st.payments||[];
+        if(!pays.length) continue;
+        const last = pays[pays.length-1];
+        const statusTxt = last.status==='paid' ? `تم دفع ${last.amount} جنيه` : `متبقي ${last.amount} جنيه`;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص ${last.term}: ${statusTxt}.\n— ${TEACHER.name}`;
+      } else if(type==='custom'){
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n${customText}\n— ${TEACHER.name}`;
+      }
+      if(msg) rows.push({name:st.name, phone:st.parentPhone, msg});
+    }
+    if(!rows.length){
+      const what = type==='attendance' ? 'سجل حضور' : type==='exam' ? 'درجة امتحان' : type==='payment' ? 'سجل مصروفات' : 'رقم ولي أمر';
+      listEl.innerHTML = `<div class="empty">مفيش طلاب عندهم رقم ولي أمر مسجّل + ${what}</div>`;
+      return;
+    }
+    waBulkRows = rows;
+    listEl.innerHTML = `<p class="hint" style="margin:0 0 10px;text-align:right;">دوس "ابعت" بالترتيب — هيفتحلك واتساب بالرسالة جاهزة، تضغط إرسال جواه وترجع تكمل اللي بعده (${rows.length} طالب).</p>` +
+      rows.map((r,i)=>`
+        <div class="row" id="waBulkRow-${i}">
+          <span>${r.name}</span>
+          <button class="btn btn-brass btn-sm" data-wa-send="${i}">📱 ابعت</button>
+        </div>
+      `).join('');
+    listEl.querySelectorAll('[data-wa-send]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = Number(btn.dataset.waSend);
+        const r = waBulkRows[i];
+        const link = waLink(r.phone, r.msg);
+        if(link) window.open(link, '_blank');
+        const row = document.getElementById('waBulkRow-'+i);
+        if(row) row.style.opacity = '0.45';
+        btn.textContent = 'تم ✓';
+        btn.disabled = true;
+        btn.classList.remove('btn-brass'); btn.classList.add('btn-ghost');
+      });
+    });
+  });
+
+  bindStudentListEvents();
+}
+
+
+/* تصفية الطلاب بالاسم أو الكود (بحث) */
+function filterStudents(list, query){
+  list = list||[];
+  if(!query || !query.trim()) return list;
+  const q = query.trim().toLowerCase();
+  return list.filter(s => (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q));
+}
+
+/* رسم قائمة الطلاب (بتتنادى كمان عند البحث عشان نحدّث الجزء ده بس) */
+function renderStudentListHTML(list){
+  if(!state.index.length) return `<div class="empty">لسه مفيش طلاب — ضيف أول طالب من فوق</div>`;
+  if(!list.length) return `<div class="empty">مفيش نتائج مطابقة للبحث</div>`;
+  return list.map(s=>`
+    <div class="student-pick">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${s.photo
+          ? `<img src="${s.photo}" alt="${s.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);flex-shrink:0;">`
+          : `<div style="width:38px;height:38px;border-radius:50%;background:var(--paper2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
+        }
+        <div><div class="nm">${s.risk?'🚨 ':''}${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="cd">${s.code}</span>
+        <button class="btn btn-ghost btn-sm" data-edit="${s.code}">إدارة</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function bindStudentListEvents(){
   $app.querySelectorAll('[data-edit]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ state.editingCode = btn.dataset.edit; state.view='studentEditor'; render(); });
   });
@@ -790,6 +992,15 @@ async function renderStudentEditor(){
       <p style="margin:0;color:#9B2C2C;font-weight:700;font-size:13.5px;">${risk.reasons.join(' و ')} — يستاهل تتواصل مع ولي الأمر.</p>
     </div>
     ` : '' }
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
+      <form id="editInfoForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>اسم الطالب</label><input type="text" id="editStudentName" value="${(s.name||'').replace(/"/g,'&quot;')}" required></div>
+        <div class="field"><label>الصف</label><input type="text" id="editStudentClass" value="${(s.klass||'').replace(/"/g,'&quot;')}" placeholder="مثال: 2 ث"></div>
+        <button class="btn btn-brass btn-sm" type="submit">حفظ التعديل</button>
+      </form>
+    </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> رابط ولي الأمر</div>
@@ -839,6 +1050,7 @@ async function renderStudentEditor(){
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
       <button class="btn btn-ghost btn-sm" id="waAttBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بحالة الحضور</button>
+      ${attendanceChartSVG(s.attendance)}
       ${ (s.attendance&&s.attendance.length) ? s.attendance.slice().reverse().map((a,ri)=>{
           const i = s.attendance.length-1-ri;
           return `<div class="row"><span>${a.date}</span><span style="display:flex;align-items:center;gap:8px;"><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span><button class="btn btn-ghost btn-sm" data-del-att="${i}">حذف</button></span></div>`;
@@ -855,6 +1067,7 @@ async function renderStudentEditor(){
         <button class="btn btn-brass" type="submit">إضافة</button>
       </form>
       <button class="btn btn-ghost btn-sm" id="waExamBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بالدرجة</button>
+      ${examsChartSVG(s.exams)}
       ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
           const i = s.exams.length-1-ri;
           return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><span>${examStars(e.score,e.max)}</span><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
@@ -885,6 +1098,19 @@ async function renderStudentEditor(){
   `;
 
   document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
+  document.getElementById('editInfoForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const newName = document.getElementById('editStudentName').value.trim();
+    const newClass = document.getElementById('editStudentClass').value.trim();
+    if(!newName){ toast('اكتب اسم الطالب'); return; }
+    s.name = newName; s.klass = newClass;
+    await saveStudent(code, s);
+    const idx = await getIndex();
+    const entry = idx.find(x=>x.code===code);
+    if(entry){ entry.name = newName; entry.klass = newClass; await saveIndex(idx); }
+    toast('تم حفظ بيانات الطالب');
+    renderStudentEditor();
+  });
   document.getElementById('copyLink').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); }
     catch(e){ toast('انسخ الكود يدويًا: '+code); }
