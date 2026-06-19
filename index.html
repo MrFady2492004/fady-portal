@@ -779,8 +779,23 @@ async function renderTeacherPanel(){
       </div>
       <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch))}</div>
     </div>
+
+    <div class="card" style="border:1.5px solid var(--warn);background:var(--warn-bg);">
+      <div class="card-title" style="color:var(--warn);"><span class="dot" style="background:var(--warn);"></span> منطقة خطر</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;color:#7A2A22;">المسح هنا نهائي ومفيش رجوع فيه — هيشيل كل الطلاب وكل سجلاتهم (الحضور، الامتحانات، المصروفات، الصور، أرقام أولياء الأمور) من القاعدة بالكامل. استخدمه بس لو عاوز تبدأ من الصفر وتدخل البيانات تاني.</p>
+      <button class="btn btn-danger btn-sm" id="deleteAllStudentsBtn">حذف كل بيانات الطلاب نهائيًا</button>
+    </div>
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
+  document.getElementById('deleteAllStudentsBtn').addEventListener('click', async ()=>{
+    if(!confirm('متأكد إنك عاوز تمسح كل بيانات الطلاب نهائيًا؟ الخطوة دي مفيش رجوع فيها.')) return;
+    if(!confirm('تأكيد أخير: هيتم حذف كل الطلاب وكل سجلاتهم (حضور، امتحانات، مصروفات، صور) من غير رجعة. متابع؟')) return;
+    await dbDelete('students');
+    await saveIndex([]);
+    state.studentSearch = '';
+    toast('تم حذف كل بيانات الطلاب — جاهز تدخلها من جديد');
+    renderTeacherPanel();
+  });
   document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
     state.studentSearch = e.target.value;
     document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch));
