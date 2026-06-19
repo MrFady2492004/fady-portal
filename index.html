@@ -294,6 +294,15 @@ async function syncStudentPoints(code, exams){
     await saveIndex(idx);
   }
 }
+/* بعد أي تعديل على حضور/درجات طالب، بنحدّث علم الخطر بتاعه في الفهرس عشان يظهر في قائمة الطلاب */
+async function syncStudentRisk(code, student){
+  const idx = await getIndex();
+  const entry = idx.find(x=>x.code===code);
+  if(entry){
+    entry.risk = riskStatus(student).atRisk;
+    await saveIndex(idx);
+  }
+}
 
 function genCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -333,6 +342,24 @@ function totalPoints(exams){
   exams = exams||[];
   return exams.reduce((sum,e)=> sum + examPoints(e.score, e.max), 0);
 }
+/* مؤشر الخطر: 3 غيابات متتالية (آخر شيء مسجّل) أو 3 درجات ضعيفة متتالية (أقل من 65%) */
+function riskStatus(s){
+  const att = (s.attendance||[]);
+  const exams = (s.exams||[]);
+  let absentStreak = 0;
+  for(let i=att.length-1;i>=0;i--){
+    if(att[i].status==='absent') absentStreak++; else break;
+  }
+  let weakStreak = 0;
+  for(let i=exams.length-1;i>=0;i--){
+    const pct = (Number(exams[i].score)/Number(exams[i].max))*100;
+    if(pct < 65) weakStreak++; else break;
+  }
+  const reasons = [];
+  if(absentStreak>=3) reasons.push(`غاب ${absentStreak} مرات على التوالي`);
+  if(weakStreak>=3) reasons.push(`جاب درجة ضعيفة ${weakStreak} مرات على التوالي`);
+  return { atRisk: reasons.length>0, reasons, absentStreak, weakStreak };
+}
 function paymentsSummary(payments){
   payments = payments||[];
   let paid=0, due=0;
@@ -340,6 +367,20 @@ function paymentsSummary(payments){
   return {paid,due};
 }
 function fmtDate(d){ if(!d) return '—'; return d; }
+/* بناء رابط واتساب مع رسالة جاهزة — بيفتح واتساب جاهز للإرسال بضغطة واحدة */
+function normalizePhone(phone){
+  if(!phone) return '';
+  let p = String(phone).replace(/[^\d+]/g,'');
+  if(p.startsWith('+')) return p.slice(1);
+  if(p.startsWith('00')) return p.slice(2);
+  if(p.startsWith('0')) return '20' + p.slice(1); // افتراض رقم مصري محلي
+  return p;
+}
+function waLink(phone, message){
+  const p = normalizePhone(phone);
+  if(!p) return null;
+  return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
+}
 
 /* ---------------- Animated background ---------------- */
 function buildBgFx(){
@@ -573,12 +614,25 @@ function renderTeacherLogin(){
 
 async function renderTeacherPanel(){
   state.index = await getIndex();
+  const riskyStudents = state.index.filter(s=>s.risk);
   $app.innerHTML = `
     ${brandbar(true)}
     <div class="topnav">
       <div class="back" id="toHome">→ خروج</div>
       <strong style="font-size:14px;">لوحة المعلم</strong>
     </div>
+
+    ${ riskyStudents.length ? `
+    <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
+      <div class="card-title" style="color:#D9534F;"><span class="dot" style="background:#D9534F;"></span> 🚨 طلاب تحت الملاحظة (${riskyStudents.length})</div>
+      ${riskyStudents.map(s=>`
+        <div class="student-pick">
+          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+          <button class="btn btn-ghost btn-sm" data-edit="${s.code}">عرض التفاصيل</button>
+        </div>
+      `).join('')}
+    </div>
+    ` : '' }
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة طالب جديد</div>
@@ -618,7 +672,7 @@ async function renderTeacherPanel(){
               ? `<img src="${s.photo}" alt="${s.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);flex-shrink:0;">`
               : `<div style="width:38px;height:38px;border-radius:50%;background:var(--paper2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
             }
-            <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+            <div><div class="nm">${s.risk?'🚨 ':''}${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="cd">${s.code}</span>
@@ -702,6 +756,7 @@ async function renderTeacherPanel(){
       st.exams.push({name:examName, date:examDate, score, max:examMax});
       await saveStudent(found.code, st);
       found.points = totalPoints(st.exams);
+      found.risk = riskStatus(st).atRisk;
       matched++;
     }
     await saveIndex(idx);
@@ -720,6 +775,7 @@ async function renderStudentEditor(){
   if(!s){ toast('الطالب غير موجود'); state.view='teacherPanel'; render(); return; }
 
   const link = location.origin + location.pathname + '?code=' + code;
+  const risk = riskStatus(s);
 
   $app.innerHTML = `
     ${brandbar(true)}
@@ -727,6 +783,13 @@ async function renderStudentEditor(){
       <div class="back" id="toPanel">→ كل الطلاب</div>
       <strong style="font-size:14px;">${s.name} · ${s.klass||'—'}</strong>
     </div>
+
+    ${ risk.atRisk ? `
+    <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
+      <div class="card-title" style="color:#D9534F;"><span class="dot" style="background:#D9534F;"></span> 🚨 مؤشر خطر</div>
+      <p style="margin:0;color:#9B2C2C;font-weight:700;font-size:13.5px;">${risk.reasons.join(' و ')} — يستاهل تتواصل مع ولي الأمر.</p>
+    </div>
+    ` : '' }
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> رابط ولي الأمر</div>
@@ -754,6 +817,15 @@ async function renderStudentEditor(){
     </div>
 
     <div class="card">
+      <div class="card-title"><span class="dot"></span> رقم ولي الأمر (واتساب)</div>
+      <form id="parentPhoneForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>الرقم</label><input type="tel" id="parentPhoneInput" placeholder="01xxxxxxxxx" value="${s.parentPhone||''}"></div>
+        <button class="btn btn-brass btn-sm" type="submit">حفظ الرقم</button>
+      </form>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">بنستخدمه عشان نجهزلك رسالة واتساب جاهزة تبعتها لولي الأمر بضغطة واحدة.</p>
+    </div>
+
+    <div class="card">
       <div class="card-title"><span class="dot"></span> تسجيل حضور</div>
       <form id="attForm" class="form-grid">
         <div class="field"><label>التاريخ</label><input type="date" id="attDate" required></div>
@@ -766,6 +838,7 @@ async function renderStudentEditor(){
         </div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
+      <button class="btn btn-ghost btn-sm" id="waAttBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بحالة الحضور</button>
       ${ (s.attendance&&s.attendance.length) ? s.attendance.slice().reverse().map((a,ri)=>{
           const i = s.attendance.length-1-ri;
           return `<div class="row"><span>${a.date}</span><span style="display:flex;align-items:center;gap:8px;"><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span><button class="btn btn-ghost btn-sm" data-del-att="${i}">حذف</button></span></div>`;
@@ -781,6 +854,7 @@ async function renderStudentEditor(){
         <div class="field"><label>من</label><input type="number" id="examMax" value="100" required></div>
         <button class="btn btn-brass" type="submit">إضافة</button>
       </form>
+      <button class="btn btn-ghost btn-sm" id="waExamBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بالدرجة</button>
       ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
           const i = s.exams.length-1-ri;
           return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><span>${examStars(e.score,e.max)}</span><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
@@ -798,6 +872,7 @@ async function renderStudentEditor(){
         <div class="field"><label>التاريخ</label><input type="date" id="payDate"></div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
+      <button class="btn btn-ghost btn-sm" id="waPayBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بحالة المصروفات</button>
       ${ (s.payments&&s.payments.length) ? s.payments.slice().reverse().map((p,ri)=>{
           const i = s.payments.length-1-ri;
           return `<div class="row"><span>${p.term} <span class="meta">— ${p.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><span class="meta">${p.amount} ج</span><span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span><button class="btn btn-ghost btn-sm" data-del-pay="${i}">حذف</button></span></span></div>`;
@@ -846,14 +921,34 @@ async function renderStudentEditor(){
     });
   }
 
+  document.getElementById('parentPhoneForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const phone = document.getElementById('parentPhoneInput').value.trim();
+    s.parentPhone = phone;
+    await saveStudent(code, s);
+    toast('تم حفظ رقم ولي الأمر');
+    renderStudentEditor();
+  });
+
   document.getElementById('attForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const date = document.getElementById('attDate').value;
     const status = document.getElementById('attStatus').value;
     if(!date) return;
     s.attendance = s.attendance||[]; s.attendance.push({date,status});
-    await saveStudent(code, s); renderStudentEditor();
+    await saveStudent(code, s); await syncStudentRisk(code, s);
+    renderStudentEditor();
   });
+  document.getElementById('waAttBtn').addEventListener('click', ()=>{
+    if(!s.parentPhone){ toast('سجّل رقم ولي الأمر الأول من فوق'); return; }
+    const date = document.getElementById('attDate').value || 'النهاردة';
+    const status = document.getElementById('attStatus').value;
+    const statusTxt = status==='present' ? 'كان حاضر' : status==='absent' ? 'كان غايب' : 'حضر متأخر';
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص حصة يوم ${date}: الطالب ${statusTxt}.\n— ${TEACHER.name}`;
+    const link = waLink(s.parentPhone, msg);
+    if(link) window.open(link, '_blank');
+  });
+
   document.getElementById('examForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const name = document.getElementById('examName').value.trim();
@@ -862,8 +957,20 @@ async function renderStudentEditor(){
     const max = document.getElementById('examMax').value;
     if(!name||score===''||max==='') return;
     s.exams = s.exams||[]; s.exams.push({name,date,score,max});
-    await saveStudent(code, s); await syncStudentPoints(code, s.exams); renderStudentEditor();
+    await saveStudent(code, s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s);
+    renderStudentEditor();
   });
+  document.getElementById('waExamBtn').addEventListener('click', ()=>{
+    if(!s.parentPhone){ toast('سجّل رقم ولي الأمر الأول من فوق'); return; }
+    const name = document.getElementById('examName').value.trim() || 'الامتحان';
+    const score = document.getElementById('examScore').value;
+    const max = document.getElementById('examMax').value || '100';
+    if(score===''){ toast('اكتب الدرجة الأول'); return; }
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nالطالب جاب في ${name}: ${score} من ${max}.\n— ${TEACHER.name}`;
+    const link = waLink(s.parentPhone, msg);
+    if(link) window.open(link, '_blank');
+  });
+
   document.getElementById('payForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const term = document.getElementById('payTerm').value.trim();
@@ -874,11 +981,22 @@ async function renderStudentEditor(){
     s.payments = s.payments||[]; s.payments.push({term,amount,status,date});
     await saveStudent(code, s); renderStudentEditor();
   });
+  document.getElementById('waPayBtn').addEventListener('click', ()=>{
+    if(!s.parentPhone){ toast('سجّل رقم ولي الأمر الأول من فوق'); return; }
+    const term = document.getElementById('payTerm').value.trim() || 'المصروفات';
+    const amount = document.getElementById('payAmount').value;
+    const status = document.getElementById('payStatus').value;
+    if(amount===''){ toast('اكتب المبلغ الأول'); return; }
+    const statusTxt = status==='paid' ? `تم دفع ${amount} جنيه` : `متبقي عليه ${amount} جنيه`;
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص ${term}: ${statusTxt}.\n— ${TEACHER.name}`;
+    const link = waLink(s.parentPhone, msg);
+    if(link) window.open(link, '_blank');
+  });
   $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); renderStudentEditor();
+    s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); await syncStudentRisk(code, s); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); renderStudentEditor();
+    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
     s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
