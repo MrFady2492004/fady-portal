@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>كشف الطالب — متابعة أولياء الأمور</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2 family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#152238;
@@ -32,8 +32,7 @@
     color:var(--ink);
     font-family:'Tajawal',sans-serif;
     min-height:100vh;
-    background-image:
-      linear-gradient(var(--paper) 1px, transparent 1px);
+    background-image:linear-gradient(var(--paper) 1px, transparent 1px);
     background-size: 100% 42px;
     background-attachment:local;
   }
@@ -72,7 +71,6 @@
   .brand-name{font-size:18px;font-weight:800;}
   .brand-sub{font-size:12.5px;color:#C9D2E0;margin-top:2px;}
   
-  /* ===== Social Links Style ===== */
   .tagline{
     position:relative;z-index:1;text-align:left;
     font-family:'Cairo',sans-serif;font-weight:800;font-size:14px;
@@ -81,20 +79,14 @@
   }
   .tagline .phone-num {
     color:var(--brass-light);font-size:15px;direction: ltr;display: inline-block;
-    transition: opacity 0.2s;
   }
-  .tagline .phone-num:hover { opacity: 0.85; }
-  .social-grid {
-    display: flex;gap: 8px;margin-top: 2px;
-  }
+  .social-grid { display: flex; gap: 8px; margin-top: 2px; }
   .social-icon {
     display: flex;align-items: center;justify-content: center;
     width: 28px;height: 28px;border-radius: 50%;background: rgba(255,255,255,0.1);
     color: #fff;font-size: 13px;transition: all 0.2s ease;
   }
-  .social-icon:hover {
-    background: var(--brass);transform: translateY(-2px);
-  }
+  .social-icon:hover { background: var(--brass); transform: translateY(-2px); }
 
   /* ===== Generic card ===== */
   .card{
@@ -102,10 +94,11 @@
     border-radius:var(--radius);padding:22px;margin-bottom:18px;
     box-shadow:0 1px 2px rgba(21,34,56,.04);
   }
-  .card-title{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .card-title{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .card-title div{display:flex;align-items:center;gap:8px;}
   .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--brass);}
 
-  /* ===== Home / code entry ===== */
+  /* ===== Home / Leaderboard ===== */
   .hero{text-align:center;padding:36px 16px 8px;}
   .hero h1{font-size:26px;font-weight:900;margin-bottom:8px;}
   .hero p{color:var(--muted);font-size:14.5px;max-width:480px;margin:0 auto;}
@@ -116,6 +109,16 @@
     background:var(--paper2);color:var(--ink);
   }
   .code-form input:focus{outline:none;border-color:var(--brass);}
+  
+  .leaderboard-table { width: 100%; margin-top: 10px; text-align: right; }
+  .leaderboard-rank { font-weight: 900; color: var(--brass); width: 40px; font-size: 16px; }
+  .star-count { color: #FFD700; font-weight: bold; }
+
+  /* ===== Danger Indicator ===== */
+  .danger-badge {
+    background: var(--warn-bg); color: var(--warn); padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 3px;
+  }
+
   .btn{
     padding:12px 20px;border-radius:10px;border:none;font-weight:700;font-size:14.5px;
     background:var(--ink);color:#fff;transition:opacity .15s;
@@ -125,13 +128,14 @@
   .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
   .btn-danger{background:var(--warn);color:#fff;}
   .btn-sm{padding:8px 13px;font-size:13px;border-radius:8px;}
+  .btn-wa { background: #25D366; color: #fff; }
   .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;}
   .footer-link{display:block;text-align:center;margin-top:34px;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer;}
 
   /* ===== Stat row ===== */
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:center;}
-  .stat .num{font-family:'Cairo',sans-serif;font-weight:900;font-size:26px;}
+  .stat .num{font-family:'Cairo',sans-serif;font-weight:900;font-size:24px;}
   .stat .lbl{font-size:12.5px;color:var(--muted);margin-top:4px;}
   .stat.good .num{color:var(--good);}
   .stat.warn .num{color:var(--warn);}
@@ -186,45 +190,23 @@
   @media(max-width:560px){
     .stats{grid-template-columns:1fr 1fr;}
     .code-form{flex-direction:column;}
-    .brandbar { flex-direction: column; text-align: center; align-items: center; }
-    .tagline { align-items: center; text-align: center; }
-    .brand-id { flex-direction: column; text-align: center; }
+    .brandbar { flex-direction: column; text-align: center; }
+    .tagline { align-items: center; }
   }
 
   /* ===== Animated background ===== */
-  #bgfx{
-    position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
-  }
-  #bgfx .bigCompass{
-    position:absolute; top:-12vw; right:-12vw; width:46vw; height:46vw; max-width:520px; max-height:520px;
-    opacity:.05; animation: spin 120s linear infinite;
-  }
-  #bgfx .bigCompass2{
-    position:absolute; bottom:-16vw; left:-16vw; width:38vw; height:38vw; max-width:420px; max-height:420px;
-    opacity:.045; animation: spin 160s linear infinite reverse;
-  }
-  #bgfx .route{
-    position:absolute; width:140%; left:-20%; opacity:.07; stroke:var(--brass);
-  }
+  #bgfx{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  #bgfx .bigCompass{ position:absolute; top:-12vw; right:-12vw; width:46vw; height:46vw; max-width:520px; max-height:520px; opacity:.05; animation: spin 120s linear infinite; }
+  #bgfx .bigCompass2{ position:absolute; bottom:-16vw; left:-16vw; width:38vw; height:38vw; max-width:420px; max-height:420px; opacity:.045; animation: spin 160s linear infinite reverse; }
+  #bgfx .route{ position:absolute; width:140%; left:-20%; opacity:.07; stroke:var(--brass); }
   #bgfx .route1{ top:14%; animation: driftX 38s ease-in-out infinite; }
   #bgfx .route2{ top:62%; animation: driftX 46s ease-in-out infinite reverse; }
-  #bgfx .spark{
-    position:absolute; color:var(--brass); opacity:0;
-    font-size:14px; animation: floatUp linear infinite;
-  }
+  #bgfx .spark{ position:absolute; color:var(--brass); opacity:0; font-size:14px; animation: floatUp linear infinite; }
   @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
   @keyframes driftX{ 0%,100%{transform:translateX(0);} 50%{transform:translateX(22px);} }
-  @keyframes floatUp{
-    0%{ transform:translateY(0) scale(.7); opacity:0; }
-    10%{ opacity:.18; }
-    90%{ opacity:.12; }
-    100%{ transform:translateY(-92vh) scale(1); opacity:0; }
-  }
+  @keyframes floatUp{ 0%{ transform:translateY(0) scale(.7); opacity:0; } 10%{ opacity:.18; } 90%{ opacity:.12; } 100%{ transform:translateY(-92vh) scale(1); opacity:0; } }
   #app{position:relative; z-index:1;}
   .brandbar, .toast{ position:relative; z-index:1; }
-  @media (prefers-reduced-motion: reduce){
-    #bgfx .bigCompass, #bgfx .bigCompass2, #bgfx .route1, #bgfx .route2, #bgfx .spark{ animation:none !important; }
-  }
 </style>
 </head>
 <body>
@@ -233,11 +215,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============ إعدادات المعلم — غيّرها هنا ============ */
+/* ============ إعدادات المعلم ============ */
 const TEACHER = {
   name: 'فادي فرح',
   subject: 'مدرس الدراسات الاجتماعية',
-  photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCAEsASwDASIAAhEBAxEB/8QAHQAAAQUBAQEBAAAAAAAAAAAABgIDBAUHCAEACf/EAEcQAAIBAwIEBAQDBQQIBQUBAQECAwAEEQUhBhIxQQcTUWEUInGBMpGhCHANGED00666666s19e666oNfC4lttZl07SbOK9htNNjaGIizeds0rGXLuwH4d1GB29qG47e4E+LHVL2ERgMWMnOM/wAId/vVDq2uT6s02rTAqZ7yWU8pzyK7cxFEFmwAjCE4lfzN+vT/DA+1bsODFKKi4mbNlyRfJMrLu21OGLl/tZm5RyrmMY/Dy4/IAfar7w2srjWoNWvPPlbVNMMUkaxgENGxK864/iV+VsegIqt1TMTFwOaM7MP61d+DWtQ8N8W3yoCZLqAPEr7qSjc/X8vypWfBjhuK6GYc8من عندي يقول لهم ابنهم جاب درجة كذا او غاب او دفع 🔴 عاوز كمان احط مؤشر خطر يتبعتلي لو الطالب غاب 3 مرات او جاب درجة وحشة 3 مرات وراء بعض', 
+  photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCAEsASwDASIAAhEBAxEB/8QAHQAAAQUBAQEBAAAAAAAAAAAABgIDBAUHCAEACf/EAEcQAAIBAwIEBAQDBQQIBQUBAQECAwAEEQUhBhIxQQcTUWEUInGBMpGhCHANGED00666666s19e666oNfC4lttZl07SbOK9htNNjaGIizeds0rGXLuwH4d1GB29qG47e4E+LHVL2ERgMWMnOM/wAId/vVDq2uT6s02rTAqZ7yWU8pzen7Y7EUFmwAjCE4lfzN+vT/DA+1bsODFKKi4mbNlyRfJMrLu21OGLl/tZm5RyrmMY/Dy4/IAfar7w2srjWoNWvPPlbVNMMUkaxgENGxK864/iV+VsegIqt1TMTFwOaM7MP61d+DWtQ8N8W3yoCZLqAPEr7qSjc/X8vypWfBjhuK6GYc8🔴', 
   pin: '1234'            
 };
 /* ===================================================== */
@@ -273,21 +255,10 @@ async function dbDelete(path){
   }catch(e){ return false; }
 }
 
-async function getIndex(){
-  const v = await dbGet('index');
-  return v || [];
-}
-async function saveIndex(list){
-  const ok = await dbSet('index', list);
-  if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
-}
-async function getStudent(code){
-  return await dbGet('students/'+code);
-}
-async function saveStudent(code, data){
-  const ok = await dbSet('students/'+code, data);
-  if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
-}
+async function getIndex(){ const v = await dbGet('index'); return v || []; }
+async function saveIndex(list){ const ok = await dbSet('index', list); if(!ok) toast('حصل خطأ في الحفظ'); }
+async function getStudent(code){ return await dbGet('students/'+code); }
+async function saveStudent(code, data){ const ok = await dbSet('students/'+code, data); if(!ok) toast('حصل خطأ في الحفظ'); }
 
 function genCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -295,7 +266,7 @@ function genCode(){
   return s;
 }
 
-/* ---------------- Calc helpers ---------------- */
+/* ---------------- Calc & Logic Helpers ---------------- */
 function attendanceStats(att){
   att = att||[];
   const total = att.length;
@@ -320,56 +291,60 @@ function paymentsSummary(payments){
 }
 function fmtDate(d){ if(!d) return '—'; return d; }
 
-/* ---------------- Animated background ---------------- */
-function buildBgFx(){
-  const el = document.getElementById('bgfx');
-  if(!el || el.dataset.built) return;
-  el.dataset.built = '1';
-  const compassSvg = (cls)=>`
-    <svg class="${cls}" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="100" cy="100" r="92" stroke="#A87C2E" stroke-width="1.4"/>
-      <circle cx="100" cy="100" r="58" stroke="#A87C2E" stroke-width="1"/>
-      <line x1="100" y1="3" x2="100" y2="197" stroke="#A87C2E" stroke-width="1"/>
-      <line x1="3" y1="100" x2="197" y2="100" stroke="#A87C2E" stroke-width="1"/>
-      <path d="M100 16 L110 100 L100 184 L90 100 Z" fill="#A87C2E"/>
-      <path d="M16 100 L100 90 L184 100 L100 110 Z" fill="#A87C2E" opacity=".6"/>
-    </svg>`;
-  const routeSvg = (cls)=>`
-    <svg class="route ${cls}" viewBox="0 0 1000 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0 30 Q 150 5, 300 32 T 600 28 T 1000 30" fill="none" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"/>
-    </svg>`;
-  let sparks = '';
-  const glyphs = ['✦','✧','⚓','★'];
-  for(let i=0;i<10;i++){
-    const left = Math.round(Math.random()*96)+'vw';
-    const dur = (22+Math.random()*22).toFixed(1)+'s';
-    const delay = (-Math.random()*30).toFixed(1)+'s';
-    const glyph = glyphs[Math.floor(Math.random()*glyphs.length)];
-    const size = (10+Math.random()*10).toFixed(0)+'px';
-    sparks += `<span class="spark" style="left:${left};bottom:-5vh;font-size:${size};animation-duration:${dur};animation-delay:${delay};">${glyph}</span>`;
+// حساب النقاط الإجمالية بناءً على الدرجات المرتفعة المستحقة للنجوم
+function calcPoints(s) {
+  let points = 0;
+  if(s.exams) {
+    s.exams.forEach(e => {
+      if((Number(e.score)/Number(e.max)) >= 0.85) points += 1;
+    });
   }
-  el.innerHTML = compassSvg('bigCompass') + compassSvg('bigCompass2') + routeSvg('route1') + routeSvg('route2') + sparks;
+  return points;
+}
+
+// فحص مؤشر الخطر: 3 غيابات متتالية أو 3 درجات سيئة متتالية (أقل من 50%)
+function checkDanger(s) {
+  let consecutiveAbsents = 0;
+  if(s.attendance) {
+    const sortedAtt = s.attendance.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+    for(let i = sortedAtt.length - 1; i >= 0; i--) {
+      if(sortedAtt[i].status === 'absent') consecutiveAbsents++;
+      else break;
+    }
+  }
+  let consecutiveBadGrades = 0;
+  if(s.exams) {
+    const sortedExams = s.exams.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+    for(let i = sortedExams.length - 1; i >= 0; i--) {
+      if((Number(sortedExams[i].score)/Number(sortedExams[i].max)) < 0.5) consecutiveBadGrades++;
+      else break;
+    }
+  }
+  return (consecutiveAbsents >= 3 || consecutiveBadGrades >= 3);
+}
+
+/* ---------------- WhatsApp Sender Helper ---------------- */
+function sendWhatsApp(phone, message) {
+  if(!phone) { toast('رقم ولي الأمر غير مسجل لهذا الطالب!'); return; }
+  let cleanPhone = phone.trim().replace(/\s+/g, '');
+  if(cleanPhone.startsWith('01')) cleanPhone = '2' + cleanPhone;
+  const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+}
+
+/* ---------------- Background Fx ---------------- */
+function buildBgFx(){
+  const el = document.getElementById('bgfx'); if(!el || el.dataset.built) return; el.dataset.built = '1';
+  const compassSvg = (cls)=>`<svg class="${cls}" viewBox="0 0 200 200" fill="none"><circle cx="100" cy="100" r="92" stroke="#A87C2E" stroke-width="1.4"/><circle cx="100" cy="100" r="58" stroke="#A87C2E" stroke-width="1"/><line x1="100" y1="3" x2="100" y2="197" stroke="#A87C2E" stroke-width="1"/><line x1="3" y1="100" x2="197" y2="100" stroke="#A87C2E" stroke-width="1"/><path d="M100 16 L110 100 L100 184 L90 100 Z" fill="#A87C2E"/></svg>`;
+  el.innerHTML = compassSvg('bigCompass') + compassSvg('bigCompass2');
 }
 
 /* ---------------- Components ---------------- */
-function avatarHTML(){
-  return `<div class="avatar avatar-photo">
-    <img src="${TEACHER.photo}" alt="${TEACHER.name}"
-      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
-  </div>`;
-}
 function brandbar(small){
   return `
   <div class="brandbar">
-    <svg class="compass" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="100" cy="100" r="90" stroke="white" stroke-width="1.5"/>
-      <circle cx="100" cy="100" r="55" stroke="white" stroke-width="1"/>
-      <line x1="100" y1="5" x2="100" y2="195" stroke="white" stroke-width="1"/>
-      <line x1="5" y1="100" x2="195" y2="100" stroke="white" stroke-width="1"/>
-      <path d="M100 20 L108 100 L100 180 L92 100 Z" fill="white"/>
-    </svg>
     <div class="brand-id">
-      ${avatarHTML()}
+      <div class="avatar"><img src="${TEACHER.photo}" alt="${TEACHER.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='📷';"></div>
       <div>
         <div class="brand-name">مستر ${TEACHER.name}</div>
         <div class="brand-sub">${TEACHER.subject} · كشف متابعة الطالب</div>
@@ -379,37 +354,70 @@ function brandbar(small){
     <div class="tagline">
       <a href="tel:01280051285" class="phone-num">📞 01280051285</a>
       <div class="social-grid">
-        <a href="https://www.youtube.com/@Mr_Fady_Farah" target="_blank" class="social-icon" title="يوتيوب">▶</a>
-        <a href="https://t.me/mrfadyfarah" target="_blank" class="social-icon" title="تيليجرام">✈</a>
-        <a href="https://mr-fady.academodo.com/" target="_blank" class="social-icon" title="المنصة التعليمية" style="font-weight:bold; font-size:11px;">🎓</a>
+        <a href="https://www.youtube.com/@Mr_Fady_Farah" target="_blank" class="social-icon">▶</a>
+        <a href="https://t.me/mrfadyfarah" target="_blank" class="social-icon">✈</a>
+        <a href="https://mr-fady.academodo.com/" target="_blank" class="social-icon" style="font-size:11px; font-weight:bold;">🎓</a>
       </div>
     </div>`}
   </div>`;
 }
 
 /* ---------------- Views ---------------- */
-function renderHome(){
+async function renderHome(){
   $app.innerHTML = `
     ${brandbar(false)}
     <div class="hero">
       <div class="eyebrow">بوابة أولياء الأمور</div>
       <h1>اطمئن على مستوى ابنك أول بأول</h1>
-      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، وحالة المصروفات.</p>
+      <p>أدخل الكود الخاص بالطالب لمتابعة الحضور، درجات الامتحانات، وحالة المصروفات.</p>
       <form class="code-form" id="codeForm">
         <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
         <button class="btn btn-brass" type="submit">عرض الكشف</button>
       </form>
-      <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
     </div>
+    
+    <div class="card" id="leaderboardCard" style="display:none;">
+      <div class="card-title"><div><span class="dot"></span> 🏆 لوحة الشرف - أفضل 10 شطار في السنتر كله</div></div>
+      <table class="leaderboard-table">
+        <thead><tr><th>الترتيب</th><th>اسم الطالب</th><th>الصف</th><th>النقاط والنجوم</th></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+
     <div class="footer-link" id="teacherLink">دخول المعلم</div>
   `;
+  
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const v = document.getElementById('codeInput').value.trim().toUpperCase();
-    if(!v) return;
-    await openReport(v);
+    if(!v) return; await openReport(v);
   });
   document.getElementById('teacherLink').addEventListener('click', ()=>{ state.view='teacherLogin'; render(); });
+
+  // جلب الطلاب وعمل لوحة الشرف تلقائياً لـ 10 طلاب
+  const idx = await getIndex();
+  if(idx.length > 0) {
+    let fullStudents = [];
+    for(const s of idx) {
+      const data = await getStudent(s.code);
+      if(data) {
+        fullStudents.push({ name: s.name, klass: s.klass, points: calcPoints(data) });
+      }
+    }
+    fullStudents.sort((a,b) => b.points - a.points);
+    const top10 = fullStudents.slice(0, 10);
+    
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = top10.map((s, i) => `
+      <tr>
+        <td class="leaderboard-rank">#${i+1}</td>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.klass || '—'}</td>
+        <td class="star-count">${s.points} ⭐</td>
+      </tr>
+    `).join('');
+    if(top10.length > 0) document.getElementById('leaderboardCard').style.display = 'block';
+  }
 }
 
 async function openReport(code){
@@ -425,12 +433,11 @@ function renderReport(){
   const att = attendanceStats(s.attendance);
   const avg = examsAvg(s.exams);
   const pay = paymentsSummary(s.payments);
+  const points = calcPoints(s);
 
   $app.innerHTML = `
     ${brandbar(false)}
-    <div class="topnav">
-      <div class="back" id="toHome">→ بحث بكود تاني</div>
-    </div>
+    <div class="topnav"><div class="back" id="toHome">→ بحث بكود تاني</div></div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
       <div class="row"><span><strong>${s.name}</strong></span><span class="meta">الصف: ${s.klass||'—'} · الكود: ${state.code}</span></div>
@@ -439,46 +446,35 @@ function renderReport(){
     <div class="stats">
       <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
-      <div class="stat ${pay.due>0?'warn':'good'}"><div class="num">${pay.due}</div><div class="lbl">متبقي عليه (جنيه)</div></div>
+      <div class="stat" style="color:#FFD700;"><div class="num">${points} ⭐</div><div class="lbl">إجمالي النقاط</div></div>
+      <div class="stat ${pay.due>0?'warn':'good'}"><div class="num">${pay.due} ج</div><div class="lbl">متبقي مصروفات</div></div>
     </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> سجل الحضور والغياب</div>
-      ${ (s.attendance&&s.attendance.length) ?
-        s.attendance.slice().reverse().map(a=>`
+      ${ (s.attendance&&s.attendance.length) ? s.attendance.slice().reverse().map(a=>`
           <div class="row"><span>${fmtDate(a.date)}</span><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span></div>
-        `).join('') : `<div class="empty">لا يوجد سجل حضور بعد</div>`
-      }
+        `).join('') : `<div class="empty">لا يوجد سجل حضور بعد</div>` }
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> الامتحانات</div>
+      <div class="card-title"><span class="dot"></span> الامتحانات والبوينتس</div>
       ${ (s.exams&&s.exams.length) ? `
-        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th></tr></thead>
+        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>مكافأة النجوم</th></tr></thead>
         <tbody>
-        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td></tr>`).join('')}
+        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td><td>${(Number(e.score)/Number(e.max))>=0.85?'⭐ نقطة تفوق': '—'}</td></tr>`).join('')}
         </tbody></table>
       ` : `<div class="empty">لا يوجد امتحانات مسجّلة بعد</div>` }
     </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> المصروفات</div>
-      ${ (s.payments&&s.payments.length) ?
-        s.payments.slice().reverse().map(p=>`
-          <div class="row">
-            <span>${p.term} <span class="meta">— ${fmtDate(p.date)}</span></span>
-            <span style="display:flex;align-items:center;gap:8px;">
-              <span class="meta">${p.amount} جنيه</span>
-              <span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span>
-            </span>
-          </div>
-        `).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>`
-      }
+      ${ (s.payments&&s.payments.length) ? s.payments.slice().reverse().map(p=>`
+          <div class="row"><span>${p.term} <span class="meta">— ${fmtDate(p.date)}</span></span><span style="display:flex;align-items:center;gap:8px;"><span class="meta">${p.amount} جنيه</span><span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span></span></div>
+        `).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>` }
     </div>
   `;
-  document.getElementById('toHome').addEventListener('click', ()=>{
-    state.view='home'; history.replaceState(null,'',location.pathname); render();
-  });
+  document.getElementById('toHome').addEventListener('click', ()=>{ state.view='home'; history.replaceState(null,'',location.pathname); render(); });
 }
 
 function renderTeacherLogin(){
@@ -488,10 +484,7 @@ function renderTeacherLogin(){
     <div class="card pin-box">
       <div class="card-title"><span class="dot"></span> دخول المعلم</div>
       <form id="pinForm">
-        <div class="field" style="margin-bottom:12px;">
-          <label>كود الدخول</label>
-          <input type="password" id="pinInput" placeholder="••••">
-        </div>
+        <div class="field" style="margin-bottom:12px;"><label>كود الدخول</label><input type="password" id="pinInput" placeholder="••••"></div>
         <button class="btn btn-brass" style="width:100%;" type="submit">دخول</button>
       </form>
     </div>
@@ -499,140 +492,70 @@ function renderTeacherLogin(){
   document.getElementById('toHome').addEventListener('click', ()=>{ state.view='home'; render(); });
   document.getElementById('pinForm').addEventListener('submit', (e)=>{
     e.preventDefault();
-    if(document.getElementById('pinInput').value === TEACHER.pin){
-      state.teacherAuthed = true; state.view='teacherPanel'; render();
-    } else { toast('الكود غير صحيح'); }
+    if(document.getElementById('pinInput').value === TEACHER.pin){ state.teacherAuthed = true; state.view='teacherPanel'; render(); } 
+    else { toast('الكود غير صحيح'); }
   });
 }
 
 async function renderTeacherPanel(){
   state.index = await getIndex();
+  
+  // فحص حالة الطلاب لحساب مؤشر الخطر لكل طالب وعرضه باللوحة الرئيسية للمعلم
+  let studentsHTML = '';
+  for(const s of state.index) {
+    const data = await getStudent(s.code);
+    const isDanger = data ? checkDanger(data) : false;
+    studentsHTML += `
+      <div class="student-pick">
+        <div>
+          <div class="nm">${s.name} ${isDanger ? '<span class="danger-badge">⚠️ خطر</span>' : ''}</div>
+          <div class="meta">${s.klass||'—'} ${s.parentPhone ? ' · ولي الأمر: ' + s.parentPhone : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="cd">${s.code}</span>
+          <button class="btn btn-ghost btn-sm" data-edit="${s.code}">إدارة</button>
+        </div>
+      </div>
+    `;
+  }
+
   $app.innerHTML = `
     ${brandbar(true)}
-    <div class="topnav">
-      <div class="back" id="toHome">→ خروج</div>
-      <strong style="font-size:14px;">لوحة المعلم</strong>
-    </div>
+    <div class="topnav"><div class="back" id="toHome">→ خروج</div><strong style="font-size:14px;">لوحة المعلم</strong></div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة طالب جديد</div>
       <form id="addForm" class="form-grid" style="align-items:end;">
         <div class="field"><label>اسم الطالب</label><input type="text" id="newName" required></div>
-        <div class="field"><label>الصف</label><input type="text" id="newClass" placeholder="مثال: 2 ث"></div>
-        <div class="field"><label>الكود (اختياري)</label><input type="text" id="newCode" maxlength="6" placeholder="سيب فاضي = يتولد تلقائي" style="text-transform:uppercase;"></div>
+        <div class="field"><label>الصف</label><input type="text" id="newClass" placeholder="مثال: 3 إعدادي"></div>
+        <div class="field"><label>رقم ولي الأمر</label><input type="text" id="newParentPhone" placeholder="01xxxxxxxxx"></div>
+        <div class="field"><label>الكود (اختياري)</label><input type="text" id="newCode" maxlength="6" placeholder="تلقائي" style="text-transform:uppercase;"></div>
         <button class="btn btn-brass" type="submit">إضافة</button>
       </form>
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> إضافة عدة طلاب من شيت (لصق دفعة واحدة)</div>
-      <p class="hint" style="margin:0 0 10px;text-align:right;">انسخ من إكسل/جوجل شيت والصق هنا — كل طالب في سطر، والأعمدة متفصلة بـ Tab أو فاصلة: <strong>الاسم، الصف، الكود (اختياري)</strong></p>
-      <textarea id="bulkStudents" rows="4" placeholder="أحمد علي&#9;2 ث&#10;سارة محمد&#9;1 ث&#9;SARA1" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
-      <button class="btn btn-brass btn-sm" id="bulkStudentsBtn" style="margin-top:10px;">استيراد الكل</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> توزيع درجات امتحان على كل الطلاب دفعة واحدة</div>
-      <div class="form-grid">
-        <div class="field"><label>اسم الامتحان</label><input type="text" id="bgExamName" placeholder="مثال: شهر مارس"></div>
-        <div class="field"><label>التاريخ</label><input type="date" id="bgExamDate"></div>
-        <div class="field"><label>من</label><input type="number" id="bgExamMax" value="100"></div>
-      </div>
-      <p class="hint" style="margin:0 0 10px;text-align:right;">الصق من الشيت: <strong>اسم الطالب، الدرجة</strong> — كل طالب في سطر. لازم الاسم يكون مطابق لاسم الطالب المسجّل عندك بالظبط.</p>
-      <textarea id="bulkGrades" rows="4" placeholder="أحمد علي&#9;88&#10;سارة محمد&#9;95" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
-      <button class="btn btn-brass btn-sm" id="bulkGradesBtn" style="margin-top:10px;">توزيع الدرجات على الكل</button>
-    </div>
-
-    <div class="card">
       <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
-      ${ state.index.length ? state.index.map(s=>`
-        <div class="student-pick">
-          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="cd">${s.code}</span>
-            <button class="btn btn-ghost btn-sm" data-edit="${s.code}">إدارة</button>
-          </div>
-        </div>
-      `).join('') : `<div class="empty">لسه مفيش طلاب — ضيف أول طالب من فوق</div>` }
+      ${ state.index.length ? studentsHTML : `<div class="empty">لسه مفيش طلاب — ضيف أول طالب من فوق</div>` }
     </div>
   `;
+  
   document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
   document.getElementById('addForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const name = document.getElementById('newName').value.trim();
     const klass = document.getElementById('newClass').value.trim();
+    const parentPhone = document.getElementById('newParentPhone').value.trim();
     const manualCode = document.getElementById('newCode').value.trim().toUpperCase();
     if(!name) return;
     const idx = await getIndex();
-    let code;
-    if(manualCode){
-      if(idx.find(x=>x.code===manualCode)){ toast('الكود ده مستخدم قبل كده — اختار كود تاني'); return; }
-      code = manualCode;
-    } else {
-      code = genCode();
-      while(idx.find(x=>x.code===code)) code = genCode();
-    }
-    idx.push({name, klass, code});
+    let code = manualCode || genCode();
+    while(idx.find(x=>x.code===code)) code = genCode();
+    
+    idx.push({name, klass, code, parentPhone});
     await saveIndex(idx);
-    await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
-    toast('تم إضافة الطالب — الكود: '+code);
-    renderTeacherPanel();
-  });
-  document.getElementById('bulkStudentsBtn').addEventListener('click', async ()=>{
-    const raw = document.getElementById('bulkStudents').value;
-    const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!lines.length){ toast('الصق بيانات الطلاب الأول'); return; }
-    const idx = await getIndex();
-    let added=0, skipped=0;
-    for(const line of lines){
-      const cols = line.split(/\t|,/).map(c=>c.trim());
-      const name = cols[0]||'';
-      const klass = cols[1]||'';
-      let manualCode = (cols[2]||'').toUpperCase();
-      if(!name) continue;
-      let code;
-      if(manualCode){
-        if(idx.find(x=>x.code===manualCode)){ skipped++; continue; }
-        code = manualCode;
-      } else {
-        code = genCode();
-        while(idx.find(x=>x.code===code)) code = genCode();
-      }
-      idx.push({name, klass, code});
-      await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
-      added++;
-    }
-    await saveIndex(idx);
-    toast(`تم إضافة ${added} طالب${skipped? ' — وتم تخطي '+skipped+' (كود مكرر)':''}`);
-    renderTeacherPanel();
-  });
-
-  document.getElementById('bulkGradesBtn').addEventListener('click', async ()=>{
-    const examName = document.getElementById('bgExamName').value.trim();
-    const examDate = document.getElementById('bgExamDate').value;
-    const examMax = document.getElementById('bgExamMax').value || '100';
-    const raw = document.getElementById('bulkGrades').value;
-    const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!examName){ toast('اكتب اسم الامتحان الأول'); return; }
-    if(!lines.length){ toast('الصق أسماء ودرجات الطلاب الأول'); return; }
-    const idx = await getIndex();
-    let matched=0; const notFound=[];
-    for(const line of lines){
-      const cols = line.split(/\t|,/).map(c=>c.trim());
-      const name = cols[0]||'';
-      const score = cols[1];
-      if(!name || score===undefined || score==='') continue;
-      const found = idx.find(x=> x.name.trim() === name.trim() );
-      if(!found){ notFound.push(name); continue; }
-      const st = await getStudent(found.code);
-      if(!st) { notFound.push(name); continue; }
-      st.exams = st.exams||[];
-      st.exams.push({name:examName, date:examDate, score, max:examMax});
-      await saveStudent(found.code, st);
-      matched++;
-    }
-    toast(`تم رصد الدرجة لـ ${matched} طالب${notFound.length? ' — مش موجودين: '+notFound.join('، '):''}`);
-    document.getElementById('bulkGrades').value='';
+    await saveStudent(code, {name, klass, parentPhone, attendance:[], exams:[], payments:[]});
+    toast('تم إضافة الطالب بنجاح'); renderTeacherPanel();
   });
 
   $app.querySelectorAll('[data-edit]').forEach(btn=>{
@@ -646,18 +569,23 @@ async function renderStudentEditor(){
   if(!s){ toast('الطالب غير موجود'); state.view='teacherPanel'; render(); return; }
 
   const link = location.origin + location.pathname + '?code=' + code;
+  const isDanger = checkDanger(s);
 
   $app.innerHTML = `
     ${brandbar(true)}
-    <div class="topnav">
-      <div class="back" id="toPanel">→ كل الطلاب</div>
-      <strong style="font-size:14px;">${s.name} · ${s.klass||'—'}</strong>
+    <div class="topnav"><div class="back" id="toPanel">→ كل الطلاب</div><strong>${s.name} ${isDanger ? '<span class="danger-badge">⚠️ مؤشر خطر نشط</span>' : ''}</strong></div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> رابط متابعة ولي الأمر</div>
+      <div class="row"><span class="cd">${code}</span><button class="btn btn-ghost btn-sm" id="copyLink">نسخ الرابط</button></div>
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> رابط ولي الأمر</div>
-      <div class="row"><span class="cd" style="font-family:Cairo;font-weight:800;letter-spacing:2px;">${code}</span>
-        <button class="btn btn-ghost btn-sm" id="copyLink">نسخ الرابط</button>
+      <div class="card-title"><span class="dot"></span> مراسلة ولي الأمر عبر الواتساب الفوري</div>
+      <div class="form-grid">
+         <button class="btn btn-wa btn-sm" id="waExam">📝 إرسال آخر نتيجة</button>
+         <button class="btn btn-wa btn-sm" id="waAtt">🔴 إرسال حالة الحضور</button>
+         <button class="btn btn-wa btn-sm" id="waPay">💰 إرسال إيصال دفع</button>
       </div>
     </div>
 
@@ -665,13 +593,7 @@ async function renderStudentEditor(){
       <div class="card-title"><span class="dot"></span> تسجيل حضور</div>
       <form id="attForm" class="form-grid">
         <div class="field"><label>التاريخ</label><input type="date" id="attDate" required></div>
-        <div class="field"><label>الحالة</label>
-          <select id="attStatus">
-            <option value="present">حاضر</option>
-            <option value="absent">غائب</option>
-            <option value="late">متأخر</option>
-          </select>
-        </div>
+        <div class="field"><label>الحالة</label><select id="attStatus"><option value="present">حاضر</option><option value="absent">غائب</option><option value="late">متأخر</option></select></div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
       ${ (s.attendance&&s.attendance.length) ? s.attendance.slice().reverse().map((a,ri)=>{
@@ -683,7 +605,7 @@ async function renderStudentEditor(){
     <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة درجة امتحان</div>
       <form id="examForm" class="form-grid">
-        <div class="field"><label>اسم الامتحان</label><input type="text" id="examName" placeholder="مثال: شهر فبراير" required></div>
+        <div class="field"><label>اسم الامتحان</label><input type="text" id="examName" placeholder="امتحان شهر" required></div>
         <div class="field"><label>التاريخ</label><input type="date" id="examDate"></div>
         <div class="field"><label>الدرجة</label><input type="number" id="examScore" required></div>
         <div class="field"><label>من</label><input type="number" id="examMax" value="100" required></div>
@@ -691,86 +613,69 @@ async function renderStudentEditor(){
       </form>
       ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
           const i = s.exams.length-1-ri;
-          return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
+          return `<div class="row"><span>${e.name}</span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max} ${(Number(e.score)/Number(e.max))>=0.85?'⭐':''}</strong><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
         }).join('') : `<div class="empty">لا يوجد امتحانات بعد</div>` }
     </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> تسجيل مصروفات</div>
       <form id="payForm" class="form-grid">
-        <div class="field"><label>البيان</label><input type="text" id="payTerm" placeholder="مثال: الترم الأول" required></div>
+        <div class="field"><label>البيان</label><input type="text" id="payTerm" placeholder="حصة / شهر" required></div>
         <div class="field"><label>المبلغ</label><input type="number" id="payAmount" required></div>
-        <div class="field"><label>الحالة</label>
-          <select id="payStatus"><option value="paid">مدفوع</option><option value="due">غير مدفوع</option></select>
-        </div>
+        <div class="field"><label>الحالة</label><select id="payStatus"><option value="paid">مدفوع</option><option value="due">غير مدفوع</option></select></div>
         <div class="field"><label>التاريخ</label><input type="date" id="payDate"></div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
-      ${ (s.payments&&s.payments.length) ? s.payments.slice().reverse().map((p,ri)=>{
-          const i = s.payments.length-1-ri;
-          return `<div class="row"><span>${p.term} <span class="meta">— ${p.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><span class="meta">${p.amount} ج</span><span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span><button class="btn btn-ghost btn-sm" data-del-pay="${i}">حذف</button></span></span></div>`;
-        }).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>` }
     </div>
-
-    <div class="card">
-      <button class="btn btn-danger" id="delStudent">حذف الطالب نهائيًا</button>
-    </div>
+    <div class="card"><button class="btn btn-danger" id="delStudent">حذف الطالب نهائيًا</button></div>
   `;
 
   document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
-  document.getElementById('copyLink').addEventListener('click', async ()=>{
-    try{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); }
-    catch(e){ toast('انسخ الكود يدويًا: '+code); }
+  document.getElementById('copyLink').addEventListener('click', async ()=>{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); });
+
+  /* تشغيل أزرار الواتساب الجاهزة بالرسائل التلقائية */
+  document.getElementById('waExam').addEventListener('click', () => {
+    if(!s.exams || !s.exams.length) { toast('لا توجد امتحانات مسجلة لهذا الطالب'); return; }
+    const last = s.exams[s.exams.length - 1];
+    const msg = `تحية طيبة من مستر فادي فرح لدعم مادة الدراسات.\nنود إحاطتكم علماً بأن ابنكم الطالب/ة (${s.name}) قد حصل في اختبار (${last.name}) على درجة: ${last.score} من ${last.max}. بالتوفيق!`;
+    sendWhatsApp(s.parentPhone, msg);
+  });
+  document.getElementById('waAtt').addEventListener('click', () => {
+    if(!s.attendance || !s.attendance.length) { toast('لا يوجد سجل حضور مسجل لهذا الطالب'); return; }
+    const last = s.attendance[s.attendance.length - 1];
+    let statusText = last.status === 'present' ? 'حاضرًا' : last.status === 'absent' ? 'غائبًا' : 'متأخرًا';
+    const msg = `تحية طيبة من مستر فادي فرح.\nنود إحاطتكم علماً بأن الطالب/ة (${s.name}) كان (${statusText}) في حصة يوم التاريخ المحدد بـ ${last.date}. يرجى المتابعة.`;
+    sendWhatsApp(s.parentPhone, msg);
+  });
+  document.getElementById('waPay').addEventListener('click', () => {
+    if(!s.payments || !s.payments.length) { toast('لا يوجد سجل مصروفات مسجل'); return; }
+    const last = s.payments[s.payments.length - 1];
+    const msg = `تحية طيبة من مستر فادي فرح.\nتم استلام مبلغ قدره ${last.amount} جنيه مقابل (${last.term}) للطالب/ة (${s.name}) بتاريخ ${last.date || 'اليوم'}. شكراً لكم.`;
+    sendWhatsApp(s.parentPhone, msg);
   });
 
   document.getElementById('attForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const date = document.getElementById('attDate').value;
-    const status = document.getElementById('attStatus').value;
-    if(!date) return;
-    s.attendance = s.attendance||[]; s.attendance.push({date,status});
-    await saveStudent(code, s); renderStudentEditor();
+    e.preventDefault(); const date = document.getElementById('attDate').value; const status = document.getElementById('attStatus').value;
+    s.attendance = s.attendance||[]; s.attendance.push({date,status}); await saveStudent(code, s); renderStudentEditor();
   });
   document.getElementById('examForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const name = document.getElementById('examName').value.trim();
-    const date = document.getElementById('examDate').value;
-    const score = document.getElementById('examScore').value;
-    const max = document.getElementById('examMax').value;
-    if(!name||score===''||max==='') return;
-    s.exams = s.exams||[]; s.exams.push({name,date,score,max});
-    await saveStudent(code, s); renderStudentEditor();
+    e.preventDefault(); const name = document.getElementById('examName').value.trim(); const date = document.getElementById('examDate').value; const score = document.getElementById('examScore').value; const max = document.getElementById('examMax').value;
+    s.exams = s.exams||[]; s.exams.push({name,date,score,max}); await saveStudent(code, s); renderStudentEditor();
   });
   document.getElementById('payForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const term = document.getElementById('payTerm').value.trim();
-    const amount = document.getElementById('payAmount').value;
-    const status = document.getElementById('payStatus').value;
-    const date = document.getElementById('payDate').value;
-    if(!term||amount==='') return;
-    s.payments = s.payments||[]; s.payments.push({term,amount,status,date});
-    await saveStudent(code, s); renderStudentEditor();
+    e.preventDefault(); const term = document.getElementById('payTerm').value.trim(); const amount = document.getElementById('payAmount').value; const status = document.getElementById('payStatus').value; const date = document.getElementById('payDate').value;
+    s.payments = s.payments||[]; s.payments.push({term,amount,status,date}); await saveStudent(code, s); renderStudentEditor();
   });
-  $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); renderStudentEditor();
-  }));
-  $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); renderStudentEditor();
-  }));
-  $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
-  }));
+  $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{ s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); renderStudentEditor(); }));
+  $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{ s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); renderStudentEditor(); }));
   document.getElementById('delStudent').addEventListener('click', async ()=>{
     if(!confirm('متأكد من حذف الطالب نهائيًا؟')) return;
-    let idx = await getIndex();
-    idx = idx.filter(x=>x.code!==code);
-    await saveIndex(idx);
-    await dbDelete('students/'+code);
+    let idx = await getIndex(); idx = idx.filter(x=>x.code!==code); await saveIndex(idx); await dbDelete('students/'+code);
     toast('تم الحذف'); state.view='teacherPanel'; render();
   });
 }
 
-/* ---------------- Router ---------------- */
+/* ---------------- Router & Boot ---------------- */
 function render(){
   if(state.view==='home') renderHome();
   else if(state.view==='report') renderReport();
@@ -778,15 +683,7 @@ function render(){
   else if(state.view==='teacherPanel') renderTeacherPanel();
   else if(state.view==='studentEditor') renderStudentEditor();
 }
-
-/* ---------------- Boot ---------------- */
-(async function boot(){
-  buildBgFx();
-  const params = new URLSearchParams(location.search);
-  const codeParam = params.get('code');
-  if(codeParam){ await openReport(codeParam.toUpperCase()); }
-  else render();
-})();
+(async function boot(){ buildBgFx(); const params = new URLSearchParams(location.search); const codeParam = params.get('code'); if(codeParam){ await openReport(codeParam.toUpperCase()); } else render(); })();
 </script>
 </body>
 </html>
