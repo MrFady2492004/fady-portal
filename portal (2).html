@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>كشف الطالب — متابعة أولياء الأمور</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152238;
+    --ink2:#23375A;
+    --paper:#EEF0EA;
+    --paper2:#F7F8F4;
+    --card:#FFFFFF;
+    --line:#D8D4C4;
+    --brass:#A87C2E;
+    --brass-light:#D9B568;
+    --good:#2F7A52;
+    --good-bg:#E6F2EB;
+    --warn:#B23A2E;
+    --warn-bg:#FBEAE8;
+    --late:#9A7B1E;
+    --late-bg:#FBF3DC;
+    --muted:#5B6470;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Tajawal',sans-serif;
+    min-height:100vh;
+    background-image:
+      linear-gradient(var(--paper) 1px, transparent 1px);
+    background-size: 100% 42px;
+    background-attachment:local;
+  }
+  #app{max-width:980px;margin:0 auto;padding:24px 18px 60px;}
+  h1,h2,h3{font-family:'Cairo',sans-serif;margin:0;}
+  .eyebrow{
+    font-family:'Tajawal',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.5px;
+    color:var(--brass);
+    text-transform:uppercase;
+  }
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select{font-family:inherit;}
+
+  /* ===== Header / brand ===== */
+  .brandbar{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;padding:18px 22px;background:var(--ink);
+    border-radius:var(--radius);color:#fff;position:relative;overflow:hidden;
+    margin-bottom:22px;
+  }
+  .brandbar svg.compass{position:absolute;left:-30px;top:-40px;opacity:.10;width:180px;height:180px;}
+  .brand-id{display:flex;align-items:center;gap:14px;position:relative;z-index:1;}
+  .avatar{
+    width:56px;height:56px;border-radius:50%;
+    background:linear-gradient(135deg,var(--brass-light),var(--brass));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Cairo',sans-serif;font-weight:800;font-size:20px;color:var(--ink);
+    flex-shrink:0;border:2px solid rgba(255,255,255,.35);
+    overflow:hidden;
+  }
+  .avatar img{width:100%;height:100%;object-fit:cover;}
+  .brand-name{font-size:18px;font-weight:800;}
+  .brand-sub{font-size:12.5px;color:#C9D2E0;margin-top:2px;}
+  .tagline{
+    position:relative;z-index:1;text-align:left;
+    font-family:'Cairo',sans-serif;font-weight:800;font-size:14px;
+    color:var(--brass-light);line-height:1.5;flex-shrink:0;max-width:160px;
+  }
+  .tagline span{display:block;font-size:11.5px;font-weight:500;color:#C9D2E0;margin-top:2px;}
+
+  /* ===== Generic card ===== */
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:22px;margin-bottom:18px;
+    box-shadow:0 1px 2px rgba(21,34,56,.04);
+  }
+  .card-title{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--brass);}
+
+  /* ===== Home / code entry ===== */
+  .hero{text-align:center;padding:36px 16px 8px;}
+  .hero h1{font-size:26px;font-weight:900;margin-bottom:8px;}
+  .hero p{color:var(--muted);font-size:14.5px;max-width:480px;margin:0 auto;}
+  .code-form{display:flex;gap:8px;max-width:380px;margin:26px auto 6px;}
+  .code-form input{
+    flex:1;padding:13px 16px;border-radius:10px;border:1.5px solid var(--line);
+    font-size:18px;letter-spacing:3px;text-align:center;font-weight:700;
+    background:var(--paper2);color:var(--ink);
+  }
+  .code-form input:focus{outline:none;border-color:var(--brass);}
+  .btn{
+    padding:12px 20px;border-radius:10px;border:none;font-weight:700;font-size:14.5px;
+    background:var(--ink);color:#fff;transition:opacity .15s;
+  }
+  .btn:hover{opacity:.88;}
+  .btn-brass{background:var(--brass);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
+  .btn-danger{background:var(--warn);color:#fff;}
+  .btn-sm{padding:8px 13px;font-size:13px;border-radius:8px;}
+  .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;}
+  .footer-link{display:block;text-align:center;margin-top:34px;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer;}
+
+  /* ===== Stat row ===== */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:center;}
+  .stat .num{font-family:'Cairo',sans-serif;font-weight:900;font-size:26px;}
+  .stat .lbl{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .stat.good .num{color:var(--good);}
+  .stat.warn .num{color:var(--warn);}
+
+  /* ===== Lists / rows ===== */
+  .row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 4px;border-bottom:1px dashed var(--line);font-size:14px;
+  }
+  .row:last-child{border-bottom:none;}
+  .row .meta{color:var(--muted);font-size:12.5px;}
+  .badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+  .badge.present{background:var(--good-bg);color:var(--good);}
+  .badge.absent{background:var(--warn-bg);color:var(--warn);}
+  .badge.late{background:var(--late-bg);color:var(--late);}
+  .badge.paid{background:var(--good-bg);color:var(--good);}
+  .badge.due{background:var(--warn-bg);color:var(--warn);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{font-family:'Cairo',sans-serif;font-size:12.5px;color:var(--muted);text-align:right;padding:8px 6px;border-bottom:2px solid var(--line);}
+  td{padding:9px 6px;border-bottom:1px dashed var(--line);}
+  tr:last-child td{border-bottom:none;}
+
+  /* ===== Forms ===== */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .field input,.field select{
+    width:100%;padding:9px 10px;border-radius:8px;border:1.3px solid var(--line);
+    background:var(--paper2);font-size:13.5px;color:var(--ink);
+  }
+  .field input:focus,.field select:focus{outline:none;border-color:var(--brass);}
+
+  .topnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .back{font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;}
+  .back:hover{color:var(--ink);}
+
+  .student-pick{display:flex;align-items:center;justify-content:space-between;padding:13px 6px;border-bottom:1px dashed var(--line);}
+  .student-pick:last-child{border-bottom:none;}
+  .student-pick .nm{font-weight:700;font-size:14.5px;}
+  .student-pick .cd{font-family:'Cairo',sans-serif;font-weight:800;letter-spacing:2px;color:var(--brass);font-size:13px;}
+
+  .pin-box{max-width:260px;margin:0 auto;}
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:30px;
+    font-size:13.5px;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.2);
+    opacity:0;pointer-events:none;transition:opacity .25s, bottom .25s;
+  }
+  .toast.show{opacity:1;bottom:30px;}
+  .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:18px 0;}
+
+  @media(max-width:560px){
+    .stats{grid-template-columns:1fr 1fr;}
+    .code-form{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ إعدادات المعلم — غيّرها هنا ============ */
+const TEACHER = {
+  name: 'مستر فادي فرح',
+  subject: 'مدرس الدراسات الاجتماعية',
+  photo: 'teacher-photo.jpg', // اسم ملف صورتك — حطّها بجانب ملف الـ html بنفس الاسم ده
+  pin: '1234'            // كود دخول لوحة المعلم — غيّره لرقم سري تعرفه أنت فقط
+};
+/* لاستخدام صورة حقيقية بدل الحروف: استبدل avatarHTML() بعنصر <img src="..."> */
+/* ===================================================== */
+
+let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'' };
+
+const $app = document.getElementById('app');
+const $toast = document.getElementById('toast');
+function toast(msg){ $toast.textContent=msg; $toast.classList.add('show'); setTimeout(()=>$toast.classList.remove('show'),2200); }
+
+/* ---------------- Storage helpers ---------------- */
+async function getIndex(){
+  try{ const r = await window.storage.get('index', true); return r? JSON.parse(r.value):[]; }
+  catch(e){ return []; }
+}
+async function saveIndex(list){
+  try{ await window.storage.set('index', JSON.stringify(list), true); }catch(e){ toast('حصل خطأ في الحفظ'); }
+}
+async function getStudent(code){
+  try{ const r = await window.storage.get('student:'+code, true); return r? JSON.parse(r.value):null; }
+  catch(e){ return null; }
+}
+async function saveStudent(code, data){
+  try{ await window.storage.set('student:'+code, JSON.stringify(data), true); }
+  catch(e){ toast('حصل خطأ في الحفظ'); }
+}
+
+function genCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<5;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+/* ---------------- Calc helpers ---------------- */
+function attendanceStats(att){
+  att = att||[];
+  const total = att.length;
+  const present = att.filter(a=>a.status==='present').length;
+  const absent = att.filter(a=>a.status==='absent').length;
+  const late = att.filter(a=>a.status==='late').length;
+  const pct = total? Math.round((present/total)*100) : 100;
+  return {total,present,absent,late,pct};
+}
+function examsAvg(exams){
+  exams = exams||[];
+  if(!exams.length) return null;
+  let sumPct=0;
+  exams.forEach(e=> sumPct += (Number(e.score)/Number(e.max))*100 );
+  return Math.round(sumPct/exams.length);
+}
+function paymentsSummary(payments){
+  payments = payments||[];
+  let paid=0, due=0;
+  payments.forEach(p=>{ if(p.status==='paid') paid+=Number(p.amount); else due+=Number(p.amount); });
+  return {paid,due};
+}
+function fmtDate(d){ if(!d) return '—'; return d; }
+
+/* ---------------- Components ---------------- */
+function avatarHTML(){
+  return `<div class="avatar avatar-photo">
+    <img src="${TEACHER.photo}" alt="${TEACHER.name}"
+      onerror="this.style.display='none'; this.parentElement.innerHTML='📷';">
+  </div>`;
+}
+function brandbar(small){
+  return `
+  <div class="brandbar">
+    <svg class="compass" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="90" stroke="white" stroke-width="1.5"/>
+      <circle cx="100" cy="100" r="55" stroke="white" stroke-width="1"/>
+      <line x1="100" y1="5" x2="100" y2="195" stroke="white" stroke-width="1"/>
+      <line x1="5" y1="100" x2="195" y2="100" stroke="white" stroke-width="1"/>
+      <path d="M100 20 L108 100 L100 180 L92 100 Z" fill="white"/>
+    </svg>
+    <div class="brand-id">
+      ${avatarHTML()}
+      <div>
+        <div class="brand-name">${TEACHER.name}</div>
+        <div class="brand-sub">${TEACHER.subject} · كشف متابعة الطالب</div>
+      </div>
+    </div>
+    ${small? '' : `<div class="tagline">مع مستر فادي<br><span>الدراسات بقت أسهل و أمتع</span></div>`}
+  </div>`;
+}
+
+/* ---------------- Views ---------------- */
+function renderHome(){
+  $app.innerHTML = `
+    ${brandbar(false)}
+    <div class="hero">
+      <div class="eyebrow">بوابة أولياء الأمور</div>
+      <h1>اطمئن على مستوى ابنك أول بأول</h1>
+      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، وحالة المصروفات.</p>
+      <form class="code-form" id="codeForm">
+        <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
+        <button class="btn btn-brass" type="submit">عرض الكشف</button>
+      </form>
+      <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
+    </div>
+    <div class="footer-link" id="teacherLink">دخول المعلم</div>
+  `;
+  document.getElementById('codeForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const v = document.getElementById('codeInput').value.trim().toUpperCase();
+    if(!v) return;
+    await openReport(v);
+  });
+  document.getElementById('teacherLink').addEventListener('click', ()=>{ state.view='teacherLogin'; render(); });
+}
+
+async function openReport(code){
+  const data = await getStudent(code);
+  if(!data){ toast('الكود غير صحيح، تأكد منه مع المدرّس'); return; }
+  state.code = code; state.student = data; state.view='report';
+  history.replaceState(null,'', location.pathname+'?code='+code);
+  render();
+}
+
+function renderReport(){
+  const s = state.student;
+  const att = attendanceStats(s.attendance);
+  const avg = examsAvg(s.exams);
+  const pay = paymentsSummary(s.payments);
+
+  $app.innerHTML = `
+    ${brandbar(false)}
+    <div class="topnav">
+      <div class="back" id="toHome">→ بحث بكود تاني</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
+      <div class="row"><span><strong>${s.name}</strong></span><span class="meta">الصف: ${s.klass||'—'} · الكود: ${state.code}</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
+      <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
+      <div class="stat ${pay.due>0?'warn':'good'}"><div class="num">${pay.due}</div><div class="lbl">متبقي عليه (جنيه)</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> سجل الحضور والغياب</div>
+      ${ (s.attendance&&s.attendance.length) ?
+        s.attendance.slice().reverse().map(a=>`
+          <div class="row"><span>${fmtDate(a.date)}</span><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span></div>
+        `).join('') : `<div class="empty">لا يوجد سجل حضور بعد</div>`
+      }
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> الامتحانات</div>
+      ${ (s.exams&&s.exams.length) ? `
+        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th></tr></thead>
+        <tbody>
+        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td></tr>`).join('')}
+        </tbody></table>
+      ` : `<div class="empty">لا يوجد امتحانات مسجّلة بعد</div>` }
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> المصروفات</div>
+      ${ (s.payments&&s.payments.length) ?
+        s.payments.slice().reverse().map(p=>`
+          <div class="row">
+            <span>${p.term} <span class="meta">— ${fmtDate(p.date)}</span></span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="meta">${p.amount} جنيه</span>
+              <span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span>
+            </span>
+          </div>
+        `).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>`
+      }
+    </div>
+  `;
+  document.getElementById('toHome').addEventListener('click', ()=>{
+    state.view='home'; history.replaceState(null,'',location.pathname); render();
+  });
+}
+
+function renderTeacherLogin(){
+  $app.innerHTML = `
+    ${brandbar(true)}
+    <div class="topnav"><div class="back" id="toHome">→ رجوع</div></div>
+    <div class="card pin-box">
+      <div class="card-title"><span class="dot"></span> دخول المعلم</div>
+      <form id="pinForm">
+        <div class="field" style="margin-bottom:12px;">
+          <label>كود الدخول</label>
+          <input type="password" id="pinInput" placeholder="••••">
+        </div>
+        <button class="btn btn-brass" style="width:100%;" type="submit">دخول</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('toHome').addEventListener('click', ()=>{ state.view='home'; render(); });
+  document.getElementById('pinForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(document.getElementById('pinInput').value === TEACHER.pin){
+      state.teacherAuthed = true; state.view='teacherPanel'; render();
+    } else { toast('الكود غير صحيح'); }
+  });
+}
+
+async function renderTeacherPanel(){
+  state.index = await getIndex();
+  $app.innerHTML = `
+    ${brandbar(true)}
+    <div class="topnav">
+      <div class="back" id="toHome">→ خروج</div>
+      <strong style="font-size:14px;">لوحة المعلم</strong>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> إضافة طالب جديد</div>
+      <form id="addForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>اسم الطالب</label><input type="text" id="newName" required></div>
+        <div class="field"><label>الصف</label><input type="text" id="newClass" placeholder="مثال: 2 ث"></div>
+        <button class="btn btn-brass" type="submit">إضافة</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
+      ${ state.index.length ? state.index.map(s=>`
+        <div class="student-pick">
+          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="cd">${s.code}</span>
+            <button class="btn btn-ghost btn-sm" data-edit="${s.code}">إدارة</button>
+          </div>
+        </div>
+      `).join('') : `<div class="empty">لسه مفيش طلاب — ضيف أول طالب من فوق</div>` }
+    </div>
+  `;
+  document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
+  document.getElementById('addForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('newName').value.trim();
+    const klass = document.getElementById('newClass').value.trim();
+    if(!name) return;
+    let code = genCode();
+    const idx = await getIndex();
+    while(idx.find(x=>x.code===code)) code = genCode();
+    idx.push({name, klass, code});
+    await saveIndex(idx);
+    await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
+    toast('تم إضافة الطالب — الكود: '+code);
+    renderTeacherPanel();
+  });
+  $app.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ state.editingCode = btn.dataset.edit; state.view='studentEditor'; render(); });
+  });
+}
+
+async function renderStudentEditor(){
+  const code = state.editingCode;
+  const s = await getStudent(code);
+  if(!s){ toast('الطالب غير موجود'); state.view='teacherPanel'; render(); return; }
+
+  const link = location.origin + location.pathname + '?code=' + code;
+
+  $app.innerHTML = `
+    ${brandbar(true)}
+    <div class="topnav">
+      <div class="back" id="toPanel">→ كل الطلاب</div>
+      <strong style="font-size:14px;">${s.name} · ${s.klass||'—'}</strong>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> رابط ولي الأمر</div>
+      <div class="row"><span class="cd" style="font-family:Cairo;font-weight:800;letter-spacing:2px;">${code}</span>
+        <button class="btn btn-ghost btn-sm" id="copyLink">نسخ الرابط</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> تسجيل حضور</div>
+      <form id="attForm" class="form-grid">
+        <div class="field"><label>التاريخ</label><input type="date" id="attDate" required></div>
+        <div class="field"><label>الحالة</label>
+          <select id="attStatus">
+            <option value="present">حاضر</option>
+            <option value="absent">غائب</option>
+            <option value="late">متأخر</option>
+          </select>
+        </div>
+        <button class="btn btn-brass" type="submit">تسجيل</button>
+      </form>
+      ${ (s.attendance&&s.attendance.length) ? s.attendance.slice().reverse().map((a,ri)=>{
+          const i = s.attendance.length-1-ri;
+          return `<div class="row"><span>${a.date}</span><span style="display:flex;align-items:center;gap:8px;"><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span><button class="btn btn-ghost btn-sm" data-del-att="${i}">حذف</button></span></div>`;
+        }).join('') : `<div class="empty">لا يوجد سجل بعد</div>` }
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> إضافة درجة امتحان</div>
+      <form id="examForm" class="form-grid">
+        <div class="field"><label>اسم الامتحان</label><input type="text" id="examName" placeholder="مثال: شهر فبراير" required></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="examDate"></div>
+        <div class="field"><label>الدرجة</label><input type="number" id="examScore" required></div>
+        <div class="field"><label>من</label><input type="number" id="examMax" value="100" required></div>
+        <button class="btn btn-brass" type="submit">إضافة</button>
+      </form>
+      ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
+          const i = s.exams.length-1-ri;
+          return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
+        }).join('') : `<div class="empty">لا يوجد امتحانات بعد</div>` }
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> تسجيل مصروفات</div>
+      <form id="payForm" class="form-grid">
+        <div class="field"><label>البيان</label><input type="text" id="payTerm" placeholder="مثال: الترم الأول" required></div>
+        <div class="field"><label>المبلغ</label><input type="number" id="payAmount" required></div>
+        <div class="field"><label>الحالة</label>
+          <select id="payStatus"><option value="paid">مدفوع</option><option value="due">غير مدفوع</option></select>
+        </div>
+        <div class="field"><label>التاريخ</label><input type="date" id="payDate"></div>
+        <button class="btn btn-brass" type="submit">تسجيل</button>
+      </form>
+      ${ (s.payments&&s.payments.length) ? s.payments.slice().reverse().map((p,ri)=>{
+          const i = s.payments.length-1-ri;
+          return `<div class="row"><span>${p.term} <span class="meta">— ${p.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><span class="meta">${p.amount} ج</span><span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span><button class="btn btn-ghost btn-sm" data-del-pay="${i}">حذف</button></span></span></div>`;
+        }).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>` }
+    </div>
+
+    <div class="card">
+      <button class="btn btn-danger" id="delStudent">حذف الطالب نهائيًا</button>
+    </div>
+  `;
+
+  document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
+  document.getElementById('copyLink').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); }
+    catch(e){ toast('انسخ الكود يدويًا: '+code); }
+  });
+
+  document.getElementById('attForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const date = document.getElementById('attDate').value;
+    const status = document.getElementById('attStatus').value;
+    if(!date) return;
+    s.attendance = s.attendance||[]; s.attendance.push({date,status});
+    await saveStudent(code, s); renderStudentEditor();
+  });
+  document.getElementById('examForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('examName').value.trim();
+    const date = document.getElementById('examDate').value;
+    const score = document.getElementById('examScore').value;
+    const max = document.getElementById('examMax').value;
+    if(!name||score===''||max==='') return;
+    s.exams = s.exams||[]; s.exams.push({name,date,score,max});
+    await saveStudent(code, s); renderStudentEditor();
+  });
+  document.getElementById('payForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const term = document.getElementById('payTerm').value.trim();
+    const amount = document.getElementById('payAmount').value;
+    const status = document.getElementById('payStatus').value;
+    const date = document.getElementById('payDate').value;
+    if(!term||amount==='') return;
+    s.payments = s.payments||[]; s.payments.push({term,amount,status,date});
+    await saveStudent(code, s); renderStudentEditor();
+  });
+  $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
+    s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); renderStudentEditor();
+  }));
+  $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
+    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); renderStudentEditor();
+  }));
+  $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
+    s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
+  }));
+  document.getElementById('delStudent').addEventListener('click', async ()=>{
+    if(!confirm('متأكد من حذف الطالب نهائيًا؟')) return;
+    let idx = await getIndex();
+    idx = idx.filter(x=>x.code!==code);
+    await saveIndex(idx);
+    try{ await window.storage.delete('student:'+code, true); }catch(e){}
+    toast('تم الحذف'); state.view='teacherPanel'; render();
+  });
+}
+
+/* ---------------- Router ---------------- */
+function render(){
+  if(state.view==='home') renderHome();
+  else if(state.view==='report') renderReport();
+  else if(state.view==='teacherLogin') renderTeacherLogin();
+  else if(state.view==='teacherPanel') renderTeacherPanel();
+  else if(state.view==='studentEditor') renderStudentEditor();
+}
+
+/* ---------------- Boot ---------------- */
+(async function boot(){
+  const params = new URLSearchParams(location.search);
+  const codeParam = params.get('code');
+  if(codeParam){ await openReport(codeParam.toUpperCase()); }
+  else render();
+})();
+</script>
+</body>
+</html>
