@@ -331,9 +331,9 @@ function examsAvg(exams){
 /* نظام النقاط: كل درجة امتحان بتاخد نقاط/نجوم حسب نسبتها */
 function examPoints(score, max){
   const pct = (Number(score)/Number(max))*100;
-  if(pct=100) return 3;
-  if(pct>=95) return 2;
-  if(pct>=90) return 1;
+  if(pct>=90) return 3;
+  if(pct>=75) return 2;
+  if(pct>=50) return 1;
   return 0;
 }
 function examStars(score, max){
@@ -553,6 +553,16 @@ async function renderHome(){
   $app.innerHTML = `
     ${brandbar(false)}
     ${socialLinksHTML()}
+    <div class="hero">
+      <div class="eyebrow">بوابة أولياء الأمور</div>
+      <h1>اطمئن على مستوى ابنك أول بأول</h1>
+      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، وحالة المصروفات.</p>
+      <form class="code-form" id="codeForm">
+        <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
+        <button class="btn btn-brass" type="submit">عرض الكشف</button>
+      </form>
+      <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
+    </div>
     ${ top10.length ? `
     <div class="card">
       <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار السنتر</div>
@@ -571,17 +581,7 @@ async function renderHome(){
       `).join('')}
     </div>
     ` : '' }
-    <div class="hero">
-      <div class="eyebrow">بوابة أولياء الأمور</div>
-      <h1>اطمئن على مستوى ابنك أول بأول</h1>
-      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، .</p>
-      <form class="code-form" id="codeForm">
-        <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
-        <button class="btn btn-brass" type="submit">عرض الكشف</button>
-      </form>
-      <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
-    </div>
-    <div class="footer-link" id="teacherLink">مستر فادي فرح</div>
+    <div class="footer-link" id="teacherLink">دخول المعلم</div>
   `;
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -731,8 +731,9 @@ async function renderTeacherPanel(){
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة عدة طلاب من شيت (لصق دفعة واحدة)</div>
-      <p class="hint" style="margin:0 0 10px;text-align:right;">انسخ من إكسل/جوجل شيت والصق هنا — كل طالب في سطر، والأعمدة متفصلة بـ Tab أو فاصلة: <strong>الاسم، الصف، الكود (اختياري)</strong></p>
-      <textarea id="bulkStudents" rows="4" placeholder="أحمد علي&#9;2 ث&#10;سارة محمد&#9;1 ث&#9;SARA1" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">انسخ من إكسل/جوجل شيت والصق هنا — كل طالب في سطر، والأعمدة متفصلة بـ Tab أو فاصلة: <strong>الاسم، الصف، الكود (اختياري)، رقم ولي الأمر واتساب (اختياري)</strong></p>
+      <textarea id="bulkStudents" rows="4" placeholder="أحمد علي&#9;2 ث&#9;&#9;01001234567&#10;سارة محمد&#9;1 ث&#9;SARA1&#9;01007654321" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">لو مش حاطط كود، سيب الخانة فاضية بس خلّي الترتيب زي ما هو (الاسم، الصف، فاضي، الرقم).</p>
       <button class="btn btn-brass btn-sm" id="bulkStudentsBtn" style="margin-top:10px;">استيراد الكل</button>
     </div>
 
@@ -817,6 +818,7 @@ async function renderTeacherPanel(){
       const name = cols[0]||'';
       const klass = cols[1]||'';
       let manualCode = (cols[2]||'').toUpperCase();
+      const parentPhone = (cols[3]||'').trim();
       if(!name) continue;
       let code;
       if(manualCode){
@@ -827,7 +829,9 @@ async function renderTeacherPanel(){
         while(idx.find(x=>x.code===code)) code = genCode();
       }
       idx.push({name, klass, code});
-      await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
+      const studentData = {name, klass, attendance:[], exams:[], payments:[]};
+      if(parentPhone) studentData.parentPhone = parentPhone;
+      await saveStudent(code, studentData);
       added++;
     }
     await saveIndex(idx);
@@ -897,7 +901,7 @@ async function renderTeacherPanel(){
         const pays = st.payments||[];
         if(!pays.length) continue;
         const last = pays[pays.length-1];
-        const statusTxt = last.status==='paid' ? `تم دفع ${last.amount} جنيه` : `متبقي ${last.amount} جنيه`;
+        const statusTxt = last.status==='paid' ? `تم دفع ${last.amount} جنيه` : `متبقي عليه ${last.amount} جنيه`;
         msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص ${last.term}: ${statusTxt}.\n— ${TEACHER.name}`;
       } else if(type==='custom'){
         msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n${customText}\n— ${TEACHER.name}`;
