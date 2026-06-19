@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>كشف الطالب — متابعة أولياء الأمور</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2 family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#152238;
@@ -80,13 +80,25 @@
   .tagline .phone-num {
     color:var(--brass-light);font-size:15px;direction: ltr;display: inline-block;
   }
-  .social-grid { display: flex; gap: 8px; margin-top: 2px; }
+  .social-grid { display: flex; gap: 8px; margin-top: 4px; }
   .social-icon {
     display: flex;align-items: center;justify-content: center;
-    width: 28px;height: 28px;border-radius: 50%;background: rgba(255,255,255,0.1);
-    color: #fff;font-size: 13px;transition: all 0.2s ease;
+    width: 32px;height: 32px;border-radius: 50%;
+    color: #fff;font-size: 14px;transition: all 0.2s ease;
   }
-  .social-icon:hover { background: var(--brass); transform: translateY(-2px); }
+  .social-icon.yt { background: #FF0000; }
+  .social-icon.tg { background: #0088cc; }
+  .social-icon.web { background: var(--brass); font-size: 16px; }
+  .social-icon:hover { transform: translateY(-2px); opacity: 0.9; }
+
+  /* ===== Student Avatar inside Report ===== */
+  .student-profile { display: flex; align-items: center; gap: 16px; padding: 6px 0; }
+  .student-avatar {
+    width: 64px; height: 64px; border-radius: 50%; background: #ddd;
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    overflow: hidden; border: 2px solid var(--line); flex-shrink: 0;
+  }
+  .student-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
   /* ===== Generic card ===== */
   .card{
@@ -110,9 +122,11 @@
   }
   .code-form input:focus{outline:none;border-color:var(--brass);}
   
-  .leaderboard-table { width: 100%; margin-top: 10px; text-align: right; }
-  .leaderboard-rank { font-weight: 900; color: var(--brass); width: 40px; font-size: 16px; }
-  .star-count { color: #FFD700; font-weight: bold; }
+  .leaderboard-table { width: 100%; margin-top: 10px; text-align: right; border-collapse: collapse; }
+  .leaderboard-table th { padding: 10px 6px; font-weight: bold; }
+  .leaderboard-table td { padding: 12px 6px; }
+  .leaderboard-rank { font-weight: 900; color: var(--brass); width: 50px; font-size: 16px; }
+  .star-count { color: #A87C2E; font-weight: bold; }
 
   /* ===== Danger Indicator ===== */
   .danger-badge {
@@ -128,7 +142,7 @@
   .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
   .btn-danger{background:var(--warn);color:#fff;}
   .btn-sm{padding:8px 13px;font-size:13px;border-radius:8px;}
-  .btn-wa { background: #25D366; color: #fff; }
+  .btn-wa { background: #25D366; color: #fff; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
   .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;}
   .footer-link{display:block;text-align:center;margin-top:34px;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer;}
 
@@ -198,13 +212,7 @@
   #bgfx{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
   #bgfx .bigCompass{ position:absolute; top:-12vw; right:-12vw; width:46vw; height:46vw; max-width:520px; max-height:520px; opacity:.05; animation: spin 120s linear infinite; }
   #bgfx .bigCompass2{ position:absolute; bottom:-16vw; left:-16vw; width:38vw; height:38vw; max-width:420px; max-height:420px; opacity:.045; animation: spin 160s linear infinite reverse; }
-  #bgfx .route{ position:absolute; width:140%; left:-20%; opacity:.07; stroke:var(--brass); }
-  #bgfx .route1{ top:14%; animation: driftX 38s ease-in-out infinite; }
-  #bgfx .route2{ top:62%; animation: driftX 46s ease-in-out infinite reverse; }
-  #bgfx .spark{ position:absolute; color:var(--brass); opacity:0; font-size:14px; animation: floatUp linear infinite; }
   @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
-  @keyframes driftX{ 0%,100%{transform:translateX(0);} 50%{transform:translateX(22px);} }
-  @keyframes floatUp{ 0%{ transform:translateY(0) scale(.7); opacity:0; } 10%{ opacity:.18; } 90%{ opacity:.12; } 100%{ transform:translateY(-92vh) scale(1); opacity:0; } }
   #app{position:relative; z-index:1;}
   .brandbar, .toast{ position:relative; z-index:1; }
 </style>
@@ -219,7 +227,7 @@
 const TEACHER = {
   name: 'فادي فرح',
   subject: 'مدرس الدراسات الاجتماعية',
-  photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCAEsASwDASIAAhEBAxEB/8QAHQAAAQUBAQEBAAAAAAAAAAAABgIDBAUHCAEACf/EAEcQAAIBAwIEBAQDBQQIBQUBAQECAwAEEQUhBhIxQQcTUWEUInGBMpGhCHANGED00666666s19e666oNfC4lttZl07SbOK9htNNjaGIizeds0rGXLuwH4d1GB29qG47e4E+LHVL2ERgMWMnOM/wAId/vVDq2uT6s02rTAqZ7yWU8pzen7Y7EUFmwAjCE4lfzN+vT/DA+1bsODFKKi4mbNlyRfJMrLu21OGLl/tZm5RyrmMY/Dy4/IAfar7w2srjWoNWvPPlbVNMMUkaxgENGxK864/iV+VsegIqt1TMTFwOaM7MP61d+DWtQ8N8W3yoCZLqAPEr7qSjc/X8vypWfBjhuK6GYc8🔴', 
+  photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/AARCAEsASwDASIAAhEBAxEB/8QAHQAAAQUBAQEBAAAAAAAAAAAABgIDBAUHCAEACf/EAEcQAAIBAwIEBAQDBQQIBQUBAQECAwAEEQUhBhIxQQcTUWEUInGBMpGhCHANGED00666666s19e666oNfC4lttZl07SbOK9htNNjaGIizeds0rGXLuwH4d1GB29qG47e4E+LHVL2ERgMWMnOM/wAId/vVDq2uT6s02rTAqZ7yWU8pzen7Y7EUFmwAjCE4lfzN+vT/DA+1bsODFKKi4mbNlyRfJMrLu21OGLl/tZm5RyrmMY/Dy4/IAfar7w2srjWoNWvPPlbVNMMUkaxgENGxK864/iV+VsegIqt1TMTFwOaM7MP61d+DWtQ8N8W3yoCZLqAPEr7qSjc/X8vypWfBjhuK6GYc8🔴', 
   pin: '1234'            
 };
 /* ===================================================== */
@@ -291,7 +299,6 @@ function paymentsSummary(payments){
 }
 function fmtDate(d){ if(!d) return '—'; return d; }
 
-// حساب النقاط الإجمالية بناءً على الدرجات المرتفعة المستحقة للنجوم
 function calcPoints(s) {
   let points = 0;
   if(s.exams) {
@@ -302,7 +309,6 @@ function calcPoints(s) {
   return points;
 }
 
-// فحص مؤشر الخطر: 3 غيابات متتالية أو 3 درجات سيئة متتالية (أقل من 50%)
 function checkDanger(s) {
   let consecutiveAbsents = 0;
   if(s.attendance) {
@@ -323,7 +329,6 @@ function checkDanger(s) {
   return (consecutiveAbsents >= 3 || consecutiveBadGrades >= 3);
 }
 
-/* ---------------- WhatsApp Sender Helper ---------------- */
 function sendWhatsApp(phone, message) {
   if(!phone) { toast('رقم ولي الأمر غير مسجل لهذا الطالب!'); return; }
   let cleanPhone = phone.trim().replace(/\s+/g, '');
@@ -332,7 +337,6 @@ function sendWhatsApp(phone, message) {
   window.open(url, '_blank');
 }
 
-/* ---------------- Background Fx ---------------- */
 function buildBgFx(){
   const el = document.getElementById('bgfx'); if(!el || el.dataset.built) return; el.dataset.built = '1';
   const compassSvg = (cls)=>`<svg class="${cls}" viewBox="0 0 200 200" fill="none"><circle cx="100" cy="100" r="92" stroke="#A87C2E" stroke-width="1.4"/><circle cx="100" cy="100" r="58" stroke="#A87C2E" stroke-width="1"/><line x1="100" y1="3" x2="100" y2="197" stroke="#A87C2E" stroke-width="1"/><line x1="3" y1="100" x2="197" y2="100" stroke="#A87C2E" stroke-width="1"/><path d="M100 16 L110 100 L100 184 L90 100 Z" fill="#A87C2E"/></svg>`;
@@ -354,9 +358,13 @@ function brandbar(small){
     <div class="tagline">
       <a href="tel:01280051285" class="phone-num">📞 01280051285</a>
       <div class="social-grid">
-        <a href="https://www.youtube.com/@Mr_Fady_Farah" target="_blank" class="social-icon">▶</a>
-        <a href="https://t.me/mrfadyfarah" target="_blank" class="social-icon">✈</a>
-        <a href="https://mr-fady.academodo.com/" target="_blank" class="social-icon" style="font-size:11px; font-weight:bold;">🎓</a>
+        <a href="https://www.youtube.com/@Mr_Fady_Farah" target="_blank" class="social-icon yt" title="يوتيوب">
+          <svg style="width:16px;height:16px;fill:white;margin-top:8px;" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </a>
+        <a href="https://t.me/mrfadyfarah" target="_blank" class="social-icon tg" title="تيليجرام">
+          <svg style="width:16px;height:16px;fill:white;margin-top:8px;" viewBox="0 0 24 24"><path d="M12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zm5.894-17.435c.116.619-.46 3.978-1.077 7.279-.26 1.396-.777 1.864-1.275 1.91-1.083.1-1.905-.716-2.954-1.404-1.64-1.077-2.566-1.737-4.156-2.785-1.838-1.212-.647-1.878.401-2.967.274-.285 5.043-4.625 5.135-5.017.114-.49-.184-.712-.749-.335-.784.523-13.179 8.706-13.561 8.961-.362.242-.69.36-.983.351-.323-.01-.943-.185-1.404-.335-.565-.184-1.012-.282-.973-.596.02-.164.246-.334.675-.508 2.641-1.152 16.05-6.732 16.48-6.917.43-.185.8-.228.92-.128z"/></svg>
+        </a>
+        <a href="https://mr-fady.academodo.com/" target="_blank" class="social-icon web" title="المنصة التعليمية">🎓</a>
       </div>
     </div>`}
   </div>`;
@@ -394,7 +402,6 @@ async function renderHome(){
   });
   document.getElementById('teacherLink').addEventListener('click', ()=>{ state.view='teacherLogin'; render(); });
 
-  // جلب الطلاب وعمل لوحة الشرف تلقائياً لـ 10 طلاب
   const idx = await getIndex();
   if(idx.length > 0) {
     let fullStudents = [];
@@ -440,13 +447,21 @@ function renderReport(){
     <div class="topnav"><div class="back" id="toHome">→ بحث بكود تاني</div></div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
-      <div class="row"><span><strong>${s.name}</strong></span><span class="meta">الصف: ${s.klass||'—'} · الكود: ${state.code}</span></div>
+      <div class="student-profile">
+        <div class="student-avatar">
+          ${s.photoUrl ? `<img src="${s.photoUrl}" alt="${s.name}">` : `👤`}
+        </div>
+        <div>
+          <div style="font-size:16px; font-weight:bold; color:var(--ink);">${s.name}</div>
+          <div class="meta" style="margin-top:4px;">الصف: ${s.klass||'—'} · الكود: ${state.code}</div>
+        </div>
+      </div>
     </div>
 
     <div class="stats">
       <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
-      <div class="stat" style="color:#FFD700;"><div class="num">${points} ⭐</div><div class="lbl">إجمالي النقاط</div></div>
+      <div class="stat" style="color:#A87C2E;"><div class="num">${points} ⭐</div><div class="lbl">إجمالي النقاط</div></div>
       <div class="stat ${pay.due>0?'warn':'good'}"><div class="num">${pay.due} ج</div><div class="lbl">متبقي مصروفات</div></div>
     </div>
 
@@ -500,7 +515,6 @@ function renderTeacherLogin(){
 async function renderTeacherPanel(){
   state.index = await getIndex();
   
-  // فحص حالة الطلاب لحساب مؤشر الخطر لكل طالب وعرضه باللوحة الرئيسية للمعلم
   let studentsHTML = '';
   for(const s of state.index) {
     const data = await getStudent(s.code);
@@ -529,6 +543,7 @@ async function renderTeacherPanel(){
         <div class="field"><label>اسم الطالب</label><input type="text" id="newName" required></div>
         <div class="field"><label>الصف</label><input type="text" id="newClass" placeholder="مثال: 3 إعدادي"></div>
         <div class="field"><label>رقم ولي الأمر</label><input type="text" id="newParentPhone" placeholder="01xxxxxxxxx"></div>
+        <div class="field"><label>رابط صورة الطالب (اختياري)</label><input type="text" id="newPhotoUrl" placeholder="http://..."></div>
         <div class="field"><label>الكود (اختياري)</label><input type="text" id="newCode" maxlength="6" placeholder="تلقائي" style="text-transform:uppercase;"></div>
         <button class="btn btn-brass" type="submit">إضافة</button>
       </form>
@@ -546,15 +561,16 @@ async function renderTeacherPanel(){
     const name = document.getElementById('newName').value.trim();
     const klass = document.getElementById('newClass').value.trim();
     const parentPhone = document.getElementById('newParentPhone').value.trim();
+    const photoUrl = document.getElementById('newPhotoUrl').value.trim();
     const manualCode = document.getElementById('newCode').value.trim().toUpperCase();
     if(!name) return;
     const idx = await getIndex();
     let code = manualCode || genCode();
     while(idx.find(x=>x.code===code)) code = genCode();
     
-    idx.push({name, klass, code, parentPhone});
+    idx.push({name, klass, code, parentPhone, photoUrl});
     await saveIndex(idx);
-    await saveStudent(code, {name, klass, parentPhone, attendance:[], exams:[], payments:[]});
+    await saveStudent(code, {name, klass, parentPhone, photoUrl, attendance:[], exams:[], payments:[]});
     toast('تم إضافة الطالب بنجاح'); renderTeacherPanel();
   });
 
@@ -587,6 +603,14 @@ async function renderStudentEditor(){
          <button class="btn btn-wa btn-sm" id="waAtt">🔴 إرسال حالة الحضور</button>
          <button class="btn btn-wa btn-sm" id="waPay">💰 إرسال إيصال دفع</button>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> تعديل رابط صورة الطالب</div>
+      <form id="editPhotoForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>رابط الصورة الحالي</label><input type="text" id="editPhotoUrl" value="${s.photoUrl || ''}" placeholder="ضع رابط الصورة هنا"></div>
+        <button class="btn btn-brass" type="submit">تحديث الصورة</button>
+      </form>
     </div>
 
     <div class="card">
@@ -626,6 +650,10 @@ async function renderStudentEditor(){
         <div class="field"><label>التاريخ</label><input type="date" id="payDate"></div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
+      ${ (s.payments&&s.payments.length) ? s.payments.slice().reverse().map((p,ri)=>{
+          const i = s.payments.length-1-ri;
+          return `<div class="row"><span>${p.term} <span class="meta">— ${p.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><span class="meta">${p.amount} ج</span><span class="badge ${p.status==='paid'?'paid':'due'}">${p.status==='paid'?'مدفوع':'غير مدفوع'}</span></span></div>`;
+        }).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>` }
     </div>
     <div class="card"><button class="btn btn-danger" id="delStudent">حذف الطالب نهائيًا</button></div>
   `;
@@ -633,7 +661,14 @@ async function renderStudentEditor(){
   document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
   document.getElementById('copyLink').addEventListener('click', async ()=>{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); });
 
-  /* تشغيل أزرار الواتساب الجاهزة بالرسائل التلقائية */
+  document.getElementById('editPhotoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    s.photoUrl = document.getElementById('editPhotoUrl').value.trim();
+    await saveStudent(code, s);
+    toast('تم تحديث صورة الطفل بنجاح');
+    renderStudentEditor();
+  });
+
   document.getElementById('waExam').addEventListener('click', () => {
     if(!s.exams || !s.exams.length) { toast('لا توجد امتحانات مسجلة لهذا الطالب'); return; }
     const last = s.exams[s.exams.length - 1];
