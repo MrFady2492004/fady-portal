@@ -285,6 +285,15 @@ async function saveStudent(code, data){
   const ok = await dbSet('students/'+code, data);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
+/* بعد أي تعديل على امتحانات طالب، بنحدّث مجموع نقاطه في الفهرس (index) عشان قائمة "أفضل 10" تفضل دقيقة */
+async function syncStudentPoints(code, exams){
+  const idx = await getIndex();
+  const entry = idx.find(x=>x.code===code);
+  if(entry){
+    entry.points = totalPoints(exams);
+    await saveIndex(idx);
+  }
+}
 
 function genCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -308,6 +317,21 @@ function examsAvg(exams){
   let sumPct=0;
   exams.forEach(e=> sumPct += (Number(e.score)/Number(e.max))*100 );
   return Math.round(sumPct/exams.length);
+}
+/* نظام النقاط: كل درجة امتحان بتاخد نقاط/نجوم حسب نسبتها */
+function examPoints(score, max){
+  const pct = (Number(score)/Number(max))*100;
+  if(pct>=90) return 3;
+  if(pct>=75) return 2;
+  if(pct>=50) return 1;
+  return 0;
+}
+function examStars(score, max){
+  return '⭐'.repeat(examPoints(score, max));
+}
+function totalPoints(exams){
+  exams = exams||[];
+  return exams.reduce((sum,e)=> sum + examPoints(e.score, e.max), 0);
 }
 function paymentsSummary(payments){
   payments = payments||[];
@@ -394,10 +418,35 @@ function socialLinksHTML(){
 }
 
 /* ---------------- Views ---------------- */
-function renderHome(){
+async function renderHome(){
+  const idx = await getIndex();
+  const top10 = idx
+    .filter(s=> (s.points||0) > 0)
+    .slice()
+    .sort((a,b)=> (b.points||0) - (a.points||0))
+    .slice(0,10);
+
   $app.innerHTML = `
     ${brandbar(false)}
     ${socialLinksHTML()}
+    ${ top10.length ? `
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار السنتر</div>
+      ${top10.map((s,i)=>`
+        <div class="student-pick">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-weight:800;color:var(--brass);width:20px;flex-shrink:0;text-align:center;">${i+1}</span>
+            ${s.photo
+              ? `<img src="${s.photo}" alt="${s.name}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);flex-shrink:0;">`
+              : `<div style="width:38px;height:38px;border-radius:50%;background:var(--paper2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
+            }
+            <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+          </div>
+          <span style="font-weight:800;color:var(--brass);white-space:nowrap;">${s.points} نقطة</span>
+        </div>
+      `).join('')}
+    </div>
+    ` : '' }
     <div class="hero">
       <div class="eyebrow">بوابة أولياء الأمور</div>
       <h1>اطمئن على مستوى ابنك أول بأول</h1>
@@ -467,10 +516,14 @@ function renderReport(){
     <div class="card">
       <div class="card-title"><span class="dot"></span> الامتحانات</div>
       ${ (s.exams&&s.exams.length) ? `
-        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th></tr></thead>
+        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقييم</th></tr></thead>
         <tbody>
-        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td></tr>`).join('')}
+        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td><td>${examStars(e.score,e.max) || '<span class="meta">—</span>'}</td></tr>`).join('')}
         </tbody></table>
+        <div class="row" style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;">
+          <span class="meta">إجمالي نقاط الطالب</span>
+          <span style="font-weight:800;color:var(--brass);">${totalPoints(s.exams)} نقطة</span>
+        </div>
       ` : `<div class="empty">لا يوجد امتحانات مسجّلة بعد</div>` }
     </div>
 
@@ -648,8 +701,10 @@ async function renderTeacherPanel(){
       st.exams = st.exams||[];
       st.exams.push({name:examName, date:examDate, score, max:examMax});
       await saveStudent(found.code, st);
+      found.points = totalPoints(st.exams);
       matched++;
     }
+    await saveIndex(idx);
     toast(`تم رصد الدرجة لـ ${matched} طالب${notFound.length? ' — مش موجودين: '+notFound.join('، '):''}`);
     document.getElementById('bulkGrades').value='';
   });
@@ -728,7 +783,7 @@ async function renderStudentEditor(){
       </form>
       ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
           const i = s.exams.length-1-ri;
-          return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
+          return `<div class="row"><span>${e.name} <span class="meta">— ${e.date||'—'}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><span>${examStars(e.score,e.max)}</span><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
         }).join('') : `<div class="empty">لا يوجد امتحانات بعد</div>` }
     </div>
 
@@ -807,7 +862,7 @@ async function renderStudentEditor(){
     const max = document.getElementById('examMax').value;
     if(!name||score===''||max==='') return;
     s.exams = s.exams||[]; s.exams.push({name,date,score,max});
-    await saveStudent(code, s); renderStudentEditor();
+    await saveStudent(code, s); await syncStudentPoints(code, s.exams); renderStudentEditor();
   });
   document.getElementById('payForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -823,7 +878,7 @@ async function renderStudentEditor(){
     s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); renderStudentEditor();
+    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
     s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
