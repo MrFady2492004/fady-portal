@@ -694,7 +694,7 @@ async function renderHome(){
         <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
         <button class="btn btn-brass" type="submit">عرض الكشف</button>
       </form>
-      <div class="hint">الكود بيتسلّم من المدرّس لكل طالب على حدة (5 حروف/أرقام)</div>
+      <div class="hint">الكود بيتسلّم من ${TEACHER.name} لكل طالب على حدة (5 حروف/أرقام)</div>
     </div>
     ${ top10.length ? `
     <div class="card">
@@ -714,7 +714,7 @@ async function renderHome(){
       `).join('')}
     </div>
     ` : '' }
-    <div class="footer-link" id="teacherLink">دخول المعلم</div>
+    <div class="footer-link" id="teacherLink">مستر فادي فرح</div>
   `;
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -727,7 +727,7 @@ async function renderHome(){
 
 async function openReport(code){
   const data = await getStudent(code);
-  if(!data){ toast('الكود غير صحيح، تأكد منه مع المدرّس'); return; }
+  if(!data){ toast(`الكود غير صحيح، تأكد منه مع ${TEACHER.name}`); return; }
   state.code = code; state.student = data; state.view='report';
   history.replaceState(null,'', location.pathname+'?code='+code);
   render();
@@ -864,7 +864,7 @@ function renderTeacherLogin(){
     ${brandbar(true)}
     <div class="topnav"><div class="back" id="toHome">→ رجوع</div></div>
     <div class="card pin-box">
-      <div class="card-title"><span class="dot"></span> دخول المعلم</div>
+      <div class="card-title"><span class="dot"></span> مستر فادي فرح</div>
       <form id="pinForm">
         <div class="field" style="margin-bottom:12px;">
           <label>كود الدخول</label>
