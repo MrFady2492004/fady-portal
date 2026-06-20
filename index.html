@@ -624,6 +624,23 @@ function renderReport(){
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> صورة الطالب</div>
+      <div class="row" style="align-items:center;gap:14px;">
+        ${s.photo
+          ? `<img id="parentPhotoPreview" src="${s.photo}" alt="${s.name}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--brass);flex-shrink:0;">`
+          : `<div id="parentPhotoPreview" style="width:64px;height:64px;border-radius:50%;background:var(--paper2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
+        }
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-block;width:fit-content;">
+            ${s.photo ? 'تغيير الصورة' : 'رفع صورة'}
+            <input type="file" id="parentPhotoInput" accept="image/*" style="display:none;">
+          </label>
+        </div>
+      </div>
+      <p class="hint" style="margin:10px 0 0;text-align:right;">ارفع صورة شخصية واضحة للطالب (مربعة أو دائرية الشكل).</p>
+    </div>
+
     <div class="stats">
       <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
@@ -672,6 +689,23 @@ function renderReport(){
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{
     state.view='home'; history.replaceState(null,'',location.pathname); render();
+  });
+  document.getElementById('parentPhotoInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ toast('اختار ملف صورة صحيح'); return; }
+    if(file.size > 4*1024*1024){ toast('الصورة كبيرة أوي — اختار صورة أصغر من 4 ميجا'); return; }
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      s.photo = reader.result;
+      await saveStudent(state.code, s);
+      const idx = await getIndex();
+      const entry = idx.find(x=>x.code===state.code);
+      if(entry){ entry.photo = s.photo; await saveIndex(idx); }
+      toast('تم رفع الصورة');
+      renderReport();
+    };
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1094,7 +1128,7 @@ async function renderStudentEditor(){
     <div class="card">
       <div class="card-title"><span class="dot"></span> تسجيل حضور</div>
       <form id="attForm" class="form-grid">
-        <div class="field"><label>التاريخ</label><input type="date" id="attDate" required></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="attDate" value="${new Date().toISOString().split('T')[0]}" required></div>
         <div class="field"><label>الحالة</label>
           <select id="attStatus">
             <option value="present">حاضر</option>
