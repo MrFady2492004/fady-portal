@@ -294,6 +294,38 @@ async function saveStudent(code, data){
   const ok = await dbSet('students/'+code, data);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
+/* سلة المحذوفات: قبل أي حذف نهائي لطالب، بناخد نسخة منه هنا عشان نقدر نسترجعه لو حصل غلط */
+async function getTrash(){
+  const v = await dbGet('trash');
+  return v || [];
+}
+async function saveTrash(list){
+  const ok = await dbSet('trash', list);
+  if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
+}
+async function moveStudentToTrash(code, studentData, indexEntry){
+  const trash = await getTrash();
+  trash.push({ code, data: studentData, indexEntry, deletedAt: new Date().toISOString() });
+  await saveTrash(trash);
+}
+async function restoreStudentFromTrash(trashIdx){
+  const trash = await getTrash();
+  const item = trash[trashIdx];
+  if(!item) return false;
+  const idx = await getIndex();
+  if(idx.find(x=>x.code===item.code)){ toast('فيه كود زي ده مستخدم دلوقتي — مينفعش الاسترجاع'); return false; }
+  idx.push(item.indexEntry || {code:item.code, name:item.data.name, klass:item.data.klass});
+  await saveIndex(idx);
+  await saveStudent(item.code, item.data);
+  trash.splice(trashIdx,1);
+  await saveTrash(trash);
+  return true;
+}
+async function purgeFromTrash(trashIdx){
+  const trash = await getTrash();
+  trash.splice(trashIdx,1);
+  await saveTrash(trash);
+}
 /* بعد أي تعديل على امتحانات طالب، بنحدّث مجموع نقاطه في الفهرس (index) عشان قائمة "أفضل 10" تفضل دقيقة */
 async function syncStudentPoints(code, exams){
   const idx = await getIndex();
@@ -895,6 +927,24 @@ async function renderTeacherPanel(){
       </div>
       <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter))}</div>
     </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> نسخة احتياطية من البيانات</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">نزّل ملف فيه كل بيانات الطلاب (حضور، درجات، مصروفات، صور) واحتفظ بيه في مكان آمن. لو حصلت مشكلة في القاعدة، ترجع تستوردها تاني من نفس الملف.</p>
+      <div class="row" style="gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-brass btn-sm" id="exportBackupBtn">⬇️ تنزيل نسخة احتياطية</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+          ⬆️ استيراد نسخة احتياطية
+          <input type="file" id="importBackupInput" accept="application/json" style="display:none;">
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> سلة المحذوفات</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">الطلاب اللي اتمسحوا بيتحفظوا هنا وتقدر تسترجعهم بكل بياناتهم وقت ما تحب.</p>
+      <div id="trashListContainer"><div class="empty">جاري التحميل...</div></div>
+    </div>
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
   document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
@@ -1184,6 +1234,77 @@ async function renderTeacherPanel(){
       state.editingCode = b.dataset.edit; state.view='studentEditor'; render();
     }));
   });
+
+  document.getElementById('exportBackupBtn').addEventListener('click', async ()=>{
+    toast('جاري تجهيز النسخة الاحتياطية...');
+    const idx = await getIndex();
+    const trash = await getTrash();
+    const students = {};
+    for(const entry of idx){
+      const st = await getStudent(entry.code);
+      if(st) students[entry.code] = st;
+    }
+    const backup = { exportedAt: new Date().toISOString(), index: idx, students, trash };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.href = url; a.download = `backup-${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('تم تنزيل النسخة الاحتياطية');
+  });
+
+  document.getElementById('importBackupInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if(!backup || !Array.isArray(backup.index) || typeof backup.students !== 'object'){
+        toast('ملف النسخة الاحتياطية مش بصيغة صحيحة'); return;
+      }
+      if(!confirm(`هيتم استبدال كل البيانات الحالية بالنسخة دي (${backup.index.length} طالب). متابع؟`)) { e.target.value=''; return; }
+      await saveIndex(backup.index);
+      for(const code in backup.students){
+        await saveStudent(code, backup.students[code]);
+      }
+      if(Array.isArray(backup.trash)) await saveTrash(backup.trash);
+      toast('تم استرجاع النسخة الاحتياطية بنجاح');
+      renderTeacherPanel();
+    }catch(err){
+      toast('حصل خطأ في قراءة الملف — اتأكد إنه نسخة احتياطية صحيحة');
+    }
+    e.target.value='';
+  });
+
+  async function renderTrashList(){
+    const trashWrap = document.getElementById('trashListContainer');
+    const trash = await getTrash();
+    if(!trash.length){ trashWrap.innerHTML = `<div class="empty">سلة المحذوفات فاضية</div>`; return; }
+    trashWrap.innerHTML = trash.map((t,i)=>`
+      <div class="row" data-trash-row="${i}">
+        <div><div class="nm">${t.data.name||'—'}</div><div class="meta">${t.data.klass||'—'} · اتمسح يوم ${(t.deletedAt||'').split('T')[0]}</div></div>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-ghost btn-sm" data-restore="${i}">↩️ استرجاع</button>
+          <button class="btn btn-danger btn-sm" data-purge="${i}">حذف نهائي</button>
+        </span>
+      </div>
+    `).join('');
+    trashWrap.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click', async ()=>{
+      const i = Number(b.dataset.restore);
+      const ok = await restoreStudentFromTrash(i);
+      if(ok){ toast('تم استرجاع الطالب'); renderTeacherPanel(); }
+    }));
+    trashWrap.querySelectorAll('[data-purge]').forEach(b=>b.addEventListener('click', async ()=>{
+      const i = Number(b.dataset.purge);
+      if(!confirm('متأكد؟ ده حذف نهائي مفيش رجوع فيه خالص.')) return;
+      await purgeFromTrash(i);
+      toast('تم الحذف النهائي من السلة');
+      renderTrashList();
+    }));
+  }
+  renderTrashList();
 }
 
 
@@ -1359,7 +1480,7 @@ async function renderStudentEditor(){
     </div>
 
     <div class="card">
-      <button class="btn btn-danger" id="delStudent">حذف الطالب نهائيًا</button>
+      <button class="btn btn-danger" id="delStudent">حذف الطالب</button>
     </div>
   `;
 
@@ -1494,12 +1615,15 @@ async function renderStudentEditor(){
     s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
   }));
   document.getElementById('delStudent').addEventListener('click', async ()=>{
-    if(!confirm('متأكد من حذف الطالب نهائيًا؟')) return;
+    if(!confirm('متأكد من حذف الطالب؟ هتقدر تسترجعه بعدين من سلة المحذوفات.')) return;
     let idx = await getIndex();
+    const indexEntry = idx.find(x=>x.code===code);
     idx = idx.filter(x=>x.code!==code);
     await saveIndex(idx);
+    await moveStudentToTrash(code, s, indexEntry);
     await dbDelete('students/'+code);
-    toast('تم الحذف'); state.view='teacherPanel'; render();
+    toast('تم نقل الطالب لسلة المحذوفات — تقدر تسترجعه من لوحة المعلم');
+    state.view='teacherPanel'; render();
   });
 }
 
