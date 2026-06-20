@@ -215,6 +215,11 @@
   @media (prefers-reduced-motion: reduce){
     #bgfx .bigCompass, #bgfx .bigCompass2, #bgfx .route1, #bgfx .route2, #bgfx .spark{ animation:none !important; }
   }
+  .seg{display:flex;gap:6px;}
+  .seg-btn{padding:6px 12px;border-radius:7px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:12.5px;font-family:inherit;cursor:pointer;font-weight:700;}
+  .seg-btn.active[data-status="present"]{background:var(--good-bg);color:var(--good);border-color:var(--good);}
+  .seg-btn.active[data-status="absent"]{background:var(--warn-bg);color:var(--warn);border-color:var(--warn);}
+  .seg-btn.active[data-status="late"]{background:var(--late-bg);color:var(--late);border-color:var(--late);}
 </style>
 </head>
 <body>
@@ -241,6 +246,7 @@ const TEACHER = {
 
 let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'', studentSearch:'', classFilter:'' };
 let waBulkRows = [];
+let attAbsentRows = [];
 /* الصفوف الستة الثابتة عشان التصنيف والتصفية تكون موحّدة */
 const CLASS_LEVELS = ['رابعة ابتدائي','خمسة ابتدائي','سادسة ابتدائي','أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
 
@@ -370,6 +376,38 @@ function paymentsSummary(payments){
   return {paid,due};
 }
 function fmtDate(d){ if(!d) return '—'; return d; }
+
+/* حساب إحصائيات لوحة التحكم العامة: عدد الطلاب، إيراد الشهر، المتأخرين في الدفع، متوسط الحضور */
+async function computeDashboardStats(idx){
+  const now = new Date();
+  const curMonth = now.getMonth(), curYear = now.getFullYear();
+  let monthRevenue = 0, totalDue = 0, attSum = 0, attCount = 0;
+  const dueList = [];
+  for(const entry of idx){
+    const st = await getStudent(entry.code);
+    if(!st) continue;
+    const pays = st.payments||[];
+    pays.forEach(p=>{
+      if(p.status==='paid' && p.date){
+        const d = new Date(p.date);
+        if(!isNaN(d) && d.getMonth()===curMonth && d.getFullYear()===curYear) monthRevenue += Number(p.amount)||0;
+      }
+    });
+    const paySum = paymentsSummary(pays);
+    if(paySum.due>0) dueList.push({name:st.name, code:entry.code, due:paySum.due});
+    const att = attendanceStats(st.attendance);
+    if(att.total>0){ attSum += att.pct; attCount++; }
+    totalDue += paySum.due;
+  }
+  dueList.sort((a,b)=>b.due-a.due);
+  return {
+    totalStudents: idx.length,
+    monthRevenue,
+    totalDue,
+    avgAtt: attCount ? Math.round(attSum/attCount) : 100,
+    dueList: dueList.slice(0,5)
+  };
+}
 
 /* رسم بياني خطي لمستوى الطالب في الامتحانات عبر الوقت (نسبة مئوية) */
 function examsChartSVG(exams){
@@ -743,6 +781,11 @@ async function renderTeacherPanel(){
       <strong style="font-size:14px;">لوحة المعلم</strong>
     </div>
 
+    <div class="card" id="dashboardCard">
+      <div class="card-title"><span class="dot"></span> لوحة التحكم العامة</div>
+      <div class="empty">جاري حساب الإحصائيات...</div>
+    </div>
+
     ${ riskyStudents.length ? `
     <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
       <div class="card-title" style="color:#D9534F;"><span class="dot" style="background:#D9534F;"></span> 🚨 طلاب تحت الملاحظة (${riskyStudents.length})</div>
@@ -784,6 +827,23 @@ async function renderTeacherPanel(){
       <p class="hint" style="margin:0 0 10px;text-align:right;">الصق من الشيت: <strong>اسم الطالب، الدرجة</strong> — كل طالب في سطر. لازم الاسم يكون مطابق لاسم الطالب المسجّل عندك بالظبط.</p>
       <textarea id="bulkGrades" rows="4" placeholder="أحمد علي&#9;88&#10;سارة محمد&#9;95" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
       <button class="btn btn-brass btn-sm" id="bulkGradesBtn" style="margin-top:10px;">توزيع الدرجات على الكل</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> تسجيل حضور جماعي للصف</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">اختار الصف، هيظهرلك كل طلابه وكل واحد متعلّم "حاضر" افتراضيًا — غيّر اللي غايب أو متأخر بس وادوس حفظ.</p>
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="field">
+          <label>الصف</label>
+          <select id="attBulkClass">
+            <option value="">اختار الصف</option>
+            ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input type="date" id="attBulkDate" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div id="attBulkListWrap"></div>
+      <div id="attAbsentSendWrap"></div>
     </div>
 
     <div class="card">
@@ -931,6 +991,91 @@ async function renderTeacherPanel(){
     document.getElementById('bulkGrades').value='';
   });
 
+  function attBulkRowHTML(entry){
+    return `
+      <div class="row" data-att-bulk-row="${entry.code}" style="align-items:center;">
+        <span>${entry.name}</span>
+        <div class="seg">
+          <button type="button" class="seg-btn active" data-status="present">حاضر</button>
+          <button type="button" class="seg-btn" data-status="absent">غايب</button>
+          <button type="button" class="seg-btn" data-status="late">متأخر</button>
+        </div>
+      </div>
+    `;
+  }
+  function renderAttBulkList(klass){
+    const wrap = document.getElementById('attBulkListWrap');
+    if(!klass){ wrap.innerHTML=''; return; }
+    const list = state.index.filter(s=>(s.klass||'').trim()===klass.trim());
+    if(!list.length){ wrap.innerHTML = `<div class="empty">مفيش طلاب في الصف ده</div>`; return; }
+    wrap.innerHTML = list.map(attBulkRowHTML).join('') +
+      `<button class="btn btn-brass btn-sm" id="attBulkSaveBtn" style="margin-top:10px;">حفظ حضور الكل (${list.length})</button>`;
+    wrap.querySelectorAll('.seg-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        btn.parentElement.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    document.getElementById('attBulkSaveBtn').addEventListener('click', async ()=>{
+      const date = document.getElementById('attBulkDate').value;
+      if(!date){ toast('اختار التاريخ الأول'); return; }
+      const rows = wrap.querySelectorAll('[data-att-bulk-row]');
+      let count=0;
+      const absentRows = [];
+      for(const row of rows){
+        const code = row.dataset.attBulkRow;
+        const activeBtn = row.querySelector('.seg-btn.active');
+        const status = activeBtn ? activeBtn.dataset.status : 'present';
+        const st = await getStudent(code);
+        if(!st) continue;
+        st.attendance = st.attendance||[];
+        st.attendance.push({date, status});
+        await saveStudent(code, st);
+        await syncStudentRisk(code, st);
+        count++;
+        if(status==='absent' && st.parentPhone){
+          const msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${date}: الطالب كان غايب.\n— ${TEACHER.name}`;
+          absentRows.push({name:st.name, phone:st.parentPhone, msg});
+        }
+      }
+      toast(`تم تسجيل حضور ${count} طالب ليوم ${date}`);
+      attAbsentRows = absentRows;
+      const sendWrap = document.getElementById('attAbsentSendWrap');
+      if(!absentRows.length){
+        sendWrap.innerHTML = '';
+        return;
+      }
+      sendWrap.innerHTML = `
+        <div class="card-title" style="margin-top:14px;"><span class="dot" style="background:var(--warn);"></span> إبلاغ أولياء أمور الغايبين (${absentRows.length})</div>
+        <p class="hint" style="margin:0 0 10px;text-align:right;">دوس "ابعت" بالترتيب لكل طالب غايب — هيفتحلك واتساب بالرسالة جاهزة.</p>
+        ${absentRows.map((r,i)=>`
+          <div class="row" id="attAbsentRow-${i}">
+            <span>${r.name}</span>
+            <button class="btn btn-brass btn-sm" data-att-absent-send="${i}">📱 ابعت</button>
+          </div>
+        `).join('')}
+      `;
+      sendWrap.querySelectorAll('[data-att-absent-send]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const i = Number(btn.dataset.attAbsentSend);
+          const r = attAbsentRows[i];
+          const waLinkUrl = waLink(r.phone, r.msg);
+          if(waLinkUrl) window.open(waLinkUrl, '_blank');
+          const row = document.getElementById('attAbsentRow-'+i);
+          if(row) row.style.opacity = '0.45';
+          btn.textContent = 'تم ✓';
+          btn.disabled = true;
+          btn.classList.remove('btn-brass'); btn.classList.add('btn-ghost');
+        });
+      });
+    });
+  }
+  document.getElementById('attBulkClass').addEventListener('change', (e)=>{
+    renderAttBulkList(e.target.value);
+    const sendWrap = document.getElementById('attAbsentSendWrap');
+    if(sendWrap) sendWrap.innerHTML = '';
+  });
+
   function toggleWaBulkDateField(){
     const type = document.getElementById('waBulkType').value;
     const needsDate = (type==='attendance' || type==='payment');
@@ -1007,6 +1152,38 @@ async function renderTeacherPanel(){
   });
 
   bindStudentListEvents();
+
+  computeDashboardStats(state.index).then(d=>{
+    const card = document.getElementById('dashboardCard');
+    if(!card) return;
+    card.innerHTML = `
+      <div class="card-title"><span class="dot"></span> لوحة التحكم العامة</div>
+      <div class="stats">
+        <div class="stat"><div class="num">${d.totalStudents}</div><div class="lbl">إجمالي الطلاب</div></div>
+        <div class="stat good"><div class="num">${d.monthRevenue}</div><div class="lbl">إيراد الشهر ده (جنيه)</div></div>
+        <div class="stat ${d.avgAtt>=85?'good':'warn'}"><div class="num">${d.avgAtt}%</div><div class="lbl">متوسط الحضور العام</div></div>
+      </div>
+      <div class="row" style="border-top:1px dashed var(--line);padding-top:10px;margin-bottom:${d.dueList.length?'10px':'0'};">
+        <span class="meta">إجمالي المتأخر تحصيله من كل الطلاب</span>
+        <span style="font-weight:800;color:${d.totalDue>0?'var(--warn)':'var(--good)'};">${d.totalDue} جنيه</span>
+      </div>
+      ${ d.dueList.length ? `
+        <div class="meta" style="margin-bottom:6px;text-align:right;">أكتر الطلاب متأخرين في الدفع:</div>
+        ${d.dueList.map(x=>`
+          <div class="row">
+            <span>${x.name}</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span class="badge due">${x.due} جنيه</span>
+              <button class="btn btn-ghost btn-sm" data-edit="${x.code}">عرض</button>
+            </span>
+          </div>
+        `).join('')}
+      ` : '' }
+    `;
+    card.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>{
+      state.editingCode = b.dataset.edit; state.view='studentEditor'; render();
+    }));
+  });
 }
 
 
