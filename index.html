@@ -801,23 +801,8 @@ async function renderTeacherPanel(){
       </div>
       <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter))}</div>
     </div>
-
-    <div class="card" style="border:1.5px solid var(--warn);background:var(--warn-bg);">
-      <div class="card-title" style="color:var(--warn);"><span class="dot" style="background:var(--warn);"></span> منطقة خطر</div>
-      <p class="hint" style="margin:0 0 10px;text-align:right;color:#7A2A22;">المسح هنا نهائي ومفيش رجوع فيه — هيشيل كل الطلاب وكل سجلاتهم (الحضور، الامتحانات، المصروفات، الصور، أرقام أولياء الأمور) من القاعدة بالكامل. استخدمه بس لو عاوز تبدأ من الصفر وتدخل البيانات تاني.</p>
-      <button class="btn btn-danger btn-sm" id="deleteAllStudentsBtn">حذف كل بيانات الطلاب نهائيًا</button>
-    </div>
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
-  document.getElementById('deleteAllStudentsBtn').addEventListener('click', async ()=>{
-    if(!confirm('متأكد إنك عاوز تمسح كل بيانات الطلاب نهائيًا؟ الخطوة دي مفيش رجوع فيها.')) return;
-    if(!confirm('تأكيد أخير: هيتم حذف كل الطلاب وكل سجلاتهم (حضور، امتحانات، مصروفات، صور) من غير رجعة. متابع؟')) return;
-    await dbDelete('students');
-    await saveIndex([]);
-    state.studentSearch = ''; state.classFilter = '';
-    toast('تم حذف كل بيانات الطلاب — جاهز تدخلها من جديد');
-    renderTeacherPanel();
-  });
   document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
     state.studentSearch = e.target.value;
     document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter));
@@ -1240,9 +1225,9 @@ async function renderStudentEditor(){
     const date = document.getElementById('attDate').value || 'النهاردة';
     const status = document.getElementById('attStatus').value;
     const statusTxt = status==='present' ? 'كان حاضر' : status==='absent' ? 'كان غايب' : 'حضر متأخر';
-    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص حصة يوم ${date}: الطالب ${statusTxt}.\n— ${TEACHER.name}`;
-    const link = waLink(s.parentPhone, msg);
-    if(link) window.open(link, '_blank');
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص حصة يوم ${date}: الطالب ${statusTxt}.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${link}`;
+    const waLinkUrl = waLink(s.parentPhone, msg);
+    if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
 
   document.getElementById('examForm').addEventListener('submit', async (e)=>{
@@ -1262,9 +1247,9 @@ async function renderStudentEditor(){
     const score = document.getElementById('examScore').value;
     const max = document.getElementById('examMax').value || '100';
     if(score===''){ toast('اكتب الدرجة الأول'); return; }
-    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nالطالب جاب في ${name}: ${score} من ${max}.\n— ${TEACHER.name}`;
-    const link = waLink(s.parentPhone, msg);
-    if(link) window.open(link, '_blank');
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nالطالب جاب في ${name}: ${score} من ${max}.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${link}`;
+    const waLinkUrl = waLink(s.parentPhone, msg);
+    if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
 
   document.getElementById('payForm').addEventListener('submit', async (e)=>{
@@ -1284,9 +1269,9 @@ async function renderStudentEditor(){
     const status = document.getElementById('payStatus').value;
     if(amount===''){ toast('اكتب المبلغ الأول'); return; }
     const statusTxt = status==='paid' ? `تم دفع ${amount} جنيه` : `متبقي عليه ${amount} جنيه`;
-    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص ${term}: ${statusTxt}.\n— ${TEACHER.name}`;
-    const link = waLink(s.parentPhone, msg);
-    if(link) window.open(link, '_blank');
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nبخصوص ${term}: ${statusTxt}.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${link}`;
+    const waLinkUrl = waLink(s.parentPhone, msg);
+    if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
   $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
     s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); await syncStudentRisk(code, s); renderStudentEditor();
@@ -1307,7 +1292,6 @@ async function renderStudentEditor(){
   });
 }
 
-/* ---------------- Router ---------------- */
 function render(){
   if(state.view==='home') renderHome();
   else if(state.view==='report') renderReport();
