@@ -220,6 +220,23 @@
   .seg-btn.active[data-status="present"]{background:var(--good-bg);color:var(--good);border-color:var(--good);}
   .seg-btn.active[data-status="absent"]{background:var(--warn-bg);color:var(--warn);border-color:var(--warn);}
   .seg-btn.active[data-status="late"]{background:var(--late-bg);color:var(--late);border-color:var(--late);}
+
+  #certOverlay{position:fixed;inset:0;background:rgba(20,16,10,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
+  #certOverlay .cert-actions{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+  .cert-paper{width:100%;max-width:640px;aspect-ratio:1.41/1;background:#FBF6EC;border:10px double var(--brass);border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px;position:relative;font-family:'Cairo',sans-serif;}
+  .cert-paper .cert-eyebrow{letter-spacing:3px;color:var(--brass);font-size:12px;font-weight:800;}
+  .cert-paper .cert-title{font-size:30px;font-weight:900;color:var(--ink);margin:10px 0;}
+  .cert-paper .cert-sub{font-size:13.5px;color:var(--muted);margin-bottom:14px;}
+  .cert-paper .cert-name{font-size:26px;font-weight:900;color:var(--brass);margin:10px 0;border-bottom:2px solid var(--brass);padding-bottom:8px;display:inline-block;min-width:60%;}
+  .cert-paper .cert-text{font-size:14px;color:var(--ink);max-width:480px;line-height:1.9;margin:14px 0;}
+  .cert-paper .cert-footer{display:flex;justify-content:space-between;width:100%;margin-top:22px;font-size:12px;color:var(--muted);}
+  @media print{
+    body *{visibility:hidden;}
+    #certOverlay, #certOverlay *{visibility:visible;}
+    #certOverlay{position:absolute;inset:0;background:#fff;padding:0;}
+    #certOverlay .cert-actions{display:none;}
+    .cert-paper{box-shadow:none;max-width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -413,8 +430,10 @@ function fmtDate(d){ if(!d) return '—'; return d; }
 async function computeDashboardStats(idx){
   const now = new Date();
   const curMonth = now.getMonth(), curYear = now.getFullYear();
+  const curDay = now.getDate();
   let monthRevenue = 0, totalDue = 0, attSum = 0, attCount = 0;
   const dueList = [];
+  const todaysBirthdays = [];
   for(const entry of idx){
     const st = await getStudent(entry.code);
     if(!st) continue;
@@ -430,6 +449,12 @@ async function computeDashboardStats(idx){
     const att = attendanceStats(st.attendance);
     if(att.total>0){ attSum += att.pct; attCount++; }
     totalDue += paySum.due;
+    if(st.birthdate){
+      const bd = new Date(st.birthdate);
+      if(!isNaN(bd) && bd.getMonth()===curMonth && bd.getDate()===curDay){
+        todaysBirthdays.push({name:st.name, code:entry.code, phone:st.parentPhone||''});
+      }
+    }
   }
   dueList.sort((a,b)=>b.due-a.due);
   return {
@@ -437,7 +462,8 @@ async function computeDashboardStats(idx){
     monthRevenue,
     totalDue,
     avgAtt: attCount ? Math.round(attSum/attCount) : 100,
-    dueList: dueList.slice(0,5)
+    dueList: dueList.slice(0,5),
+    todaysBirthdays
   };
 }
 
@@ -535,6 +561,36 @@ function waLink(phone, message){
   const p = normalizePhone(phone);
   if(!p) return null;
   return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
+}
+
+/* عرض شهادة تقدير قابلة للطباعة/الحفظ كـ PDF لطالب معيّن */
+function showCertificate(s){
+  const old = document.getElementById('certOverlay');
+  if(old) old.remove();
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
+  const overlay = document.createElement('div');
+  overlay.id = 'certOverlay';
+  overlay.innerHTML = `
+    <div class="cert-actions">
+      <button class="btn btn-brass btn-sm" id="certPrintBtn">🖨️ طباعة / حفظ PDF</button>
+      <button class="btn btn-ghost btn-sm" id="certCloseBtn">إغلاق ✕</button>
+    </div>
+    <div class="cert-paper">
+      <div class="cert-eyebrow">${(TEACHER.name||'').toUpperCase()}</div>
+      <div class="cert-title">شهادة تقدير</div>
+      <div class="cert-sub">تُمنح هذه الشهادة إلى</div>
+      <div class="cert-name">${s.name||''}</div>
+      <div class="cert-text">تقديرًا لتميّزه والتزامه ومجهوده المتواصل خلال الفترة الدراسية، ونتمنى له دوام التفوق والنجاح.</div>
+      <div class="cert-footer">
+        <span>${dateStr}</span>
+        <span>${TEACHER.name||''}</span>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('certCloseBtn').addEventListener('click', ()=> overlay.remove());
+  document.getElementById('certPrintBtn').addEventListener('click', ()=> window.print());
 }
 
 /* ---------------- Animated background ---------------- */
@@ -711,6 +767,15 @@ function renderReport(){
       <p class="hint" style="margin:10px 0 0;text-align:right;">ارفع صورة شخصية واضحة للطالب (مربعة أو دائرية الشكل).</p>
     </div>
 
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> تاريخ ميلاد الطالب</div>
+      <form id="parentBirthdateForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="parentBirthdateInput" value="${s.birthdate||''}"></div>
+        <button class="btn btn-brass btn-sm" type="submit">حفظ</button>
+      </form>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">هنفتكر المدرّس بعيد ميلاد ابنك عشان يبعتله تهنئة 🎉</p>
+    </div>
+
     <div class="stats">
       <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
@@ -777,6 +842,16 @@ function renderReport(){
     };
     reader.readAsDataURL(file);
   });
+  document.getElementById('parentBirthdateForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const bd = document.getElementById('parentBirthdateInput').value;
+    s.birthdate = bd;
+    await saveStudent(state.code, s);
+    const idx = await getIndex();
+    const entry = idx.find(x=>x.code===state.code);
+    if(entry){ entry.birthdate = bd; await saveIndex(idx); }
+    toast('تم حفظ تاريخ الميلاد');
+  });
 }
 
 function renderTeacherLogin(){
@@ -812,6 +887,8 @@ async function renderTeacherPanel(){
       <div class="back" id="toHome">→ خروج</div>
       <strong style="font-size:14px;">لوحة المعلم</strong>
     </div>
+
+    <div class="card" id="birthdaysCard" style="display:none;"></div>
 
     <div class="card" id="dashboardCard">
       <div class="card-title"><span class="dot"></span> لوحة التحكم العامة</div>
@@ -1233,6 +1310,35 @@ async function renderTeacherPanel(){
     card.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>{
       state.editingCode = b.dataset.edit; state.view='studentEditor'; render();
     }));
+
+    const bCard = document.getElementById('birthdaysCard');
+    if(bCard && d.todaysBirthdays && d.todaysBirthdays.length){
+      bCard.style.display = '';
+      bCard.style.border = '1.5px solid var(--brass)';
+      bCard.style.background = 'var(--late-bg)';
+      bCard.innerHTML = `
+        <div class="card-title"><span class="dot" style="background:var(--brass);"></span> 🎂 أعياد ميلاد النهاردة (${d.todaysBirthdays.length})</div>
+        ${d.todaysBirthdays.map((b,i)=>`
+          <div class="row">
+            <span>${b.name}</span>
+            <span style="display:flex;align-items:center;gap:8px;">
+              ${b.phone ? `<button class="btn btn-brass btn-sm" data-bday-send="${i}">📱 ابعت تهنئة</button>` : `<span class="meta">مفيش رقم ولي أمر</span>`}
+            </span>
+          </div>
+        `).join('')}
+      `;
+      bCard.querySelectorAll('[data-bday-send]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const i = Number(btn.dataset.bdaySend);
+          const b = d.todaysBirthdays[i];
+          const msg = `حضرتك ولي أمر الطالب/ة ${b.name}\nالنهاردة عيد ميلاده 🎉 كل سنة وهو طيب، وربنا يديمله الصحة والتفوق.\n— ${TEACHER.name}`;
+          const waLinkUrl = waLink(b.phone, msg);
+          if(waLinkUrl) window.open(waLinkUrl, '_blank');
+          btn.textContent = 'تم ✓'; btn.disabled = true;
+          btn.classList.remove('btn-brass'); btn.classList.add('btn-ghost');
+        });
+      });
+    }
   });
 
   document.getElementById('exportBackupBtn').addEventListener('click', async ()=>{
@@ -1397,6 +1503,12 @@ async function renderStudentEditor(){
     </div>
 
     <div class="card">
+      <div class="card-title"><span class="dot"></span> شهادة تقدير</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">جهّز شهادة تقدير للطالب تقدر تطبعها أو تحفظها PDF وتبعتها لولي الأمر.</p>
+      <button class="btn btn-brass btn-sm" id="genCertBtn">🏅 إصدار شهادة تقدير</button>
+    </div>
+
+    <div class="card">
       <div class="card-title"><span class="dot"></span> صورة الطالب</div>
       <div class="row" style="align-items:center;gap:14px;">
         ${s.photo
@@ -1501,6 +1613,10 @@ async function renderStudentEditor(){
   document.getElementById('copyLink').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(link); toast('تم نسخ الرابط'); }
     catch(e){ toast('انسخ الكود يدويًا: '+code); }
+  });
+
+  document.getElementById('genCertBtn').addEventListener('click', ()=>{
+    showCertificate(s);
   });
 
   document.getElementById('studentPhotoInput').addEventListener('change', async (e)=>{
