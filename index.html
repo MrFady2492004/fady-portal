@@ -311,6 +311,16 @@ async function saveStudent(code, data){
   const ok = await dbSet('students/'+code, data);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
+/* سجل التغييرات: بنضيف entry في s.log كل ما حصل تعديل على بيانات الطالب */
+function addLog(s, msg){
+  s.log = s.log||[];
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'});
+  const timeStr = now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+  s.log.unshift({ msg, dateStr, timeStr, ts: now.getTime() });
+  if(s.log.length > 30) s.log = s.log.slice(0,30);
+}
+
 /* سلة المحذوفات: قبل أي حذف نهائي لطالب، بناخد نسخة منه هنا عشان نقدر نسترجعه لو حصل غلط */
 async function getTrash(){
   const v = await dbGet('trash');
@@ -781,6 +791,15 @@ function renderReport(){
       <p class="hint" style="margin:8px 0 0;text-align:right;">هنفتكر المدرّس بعيد ميلاد ابنك عشان يبعتله تهنئة 🎉</p>
     </div>
 
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> رقم واتساب ولي الأمر</div>
+      <form id="parentWhatsappForm" class="form-grid" style="align-items:end;">
+        <div class="field"><label>رقم الواتساب (مثال: 201012345678)</label><input type="tel" id="parentWhatsappInput" placeholder="201012345678" value="${s.parentPhone||''}" dir="ltr"></div>
+        <button class="btn btn-brass btn-sm" type="submit">حفظ الرقم</button>
+      </form>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">الرقم ده بيستخدمه المدرّس عشان يبعتلك إشعارات الحضور والدرجات على واتساب.</p>
+    </div>
+
     <div class="stats">
       <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
@@ -792,7 +811,7 @@ function renderReport(){
       ${attendanceChartSVG(s.attendance)}
       ${ (s.attendance&&s.attendance.length) ?
         s.attendance.slice().reverse().map(a=>`
-          <div class="row"><span>${fmtDate(a.date)}</span><span class="badge ${a.status}">${a.status==='present'?'حاضر':a.status==='absent'?'غائب':'متأخر'}</span></div>
+          <div class="row"><span>${fmtDate(a.date)}</span><span class="badge ${a.status}">${a.status==='present'?'حاضر':'غائب'}</span></div>
         `).join('') : `<div class="empty">لا يوجد سجل حضور بعد</div>`
       }
     </div>
@@ -826,6 +845,18 @@ function renderReport(){
         `).join('') : `<div class="empty">لا يوجد سجل مدفوعات بعد</div>`
       }
     </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> 🕐 سجل آخر التحديثات</div>
+      ${ (s.log&&s.log.length) ?
+        s.log.slice(0,10).map(l=>`
+          <div class="row" style="align-items:flex-start;gap:10px;">
+            <span style="font-size:13.5px;">${l.msg}</span>
+            <span class="meta" style="white-space:nowrap;flex-shrink:0;font-size:12px;">${l.dateStr}<br>${l.timeStr}</span>
+          </div>
+        `).join('') : `<div class="empty">لا يوجد تحديثات مسجّلة بعد</div>`
+      }
+    </div>
   `;
   document.getElementById('toHome').addEventListener('click', ()=>{
     state.view='home'; history.replaceState(null,'',location.pathname); render();
@@ -856,6 +887,17 @@ function renderReport(){
     const entry = idx.find(x=>x.code===state.code);
     if(entry){ entry.birthdate = bd; await saveIndex(idx); }
     toast('تم حفظ تاريخ الميلاد');
+  });
+  document.getElementById('parentWhatsappForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const phone = document.getElementById('parentWhatsappInput').value.trim();
+    s.parentPhone = phone;
+    await saveStudent(state.code, s);
+    const idx = await getIndex();
+    const entry = idx.find(x=>x.code===state.code);
+    if(entry){ entry.parentPhone = phone; await saveIndex(idx); }
+    toast('تم حفظ رقم الواتساب ✅');
+    renderReport();
   });
 }
 
@@ -1670,6 +1712,7 @@ async function renderStudentEditor(){
     const status = document.getElementById('attStatus').value;
     if(!date) return;
     s.attendance = s.attendance||[]; s.attendance.push({date,status});
+    addLog(s, `سجّل حضور يوم ${fmtDate(date)} — ${status==='present'?'حاضر':status==='absent'?'غائب':'متأخر'}`);
     await saveStudent(code, s); await syncStudentRisk(code, s);
     renderStudentEditor();
   });
@@ -1691,6 +1734,7 @@ async function renderStudentEditor(){
     const max = document.getElementById('examMax').value;
     if(!name||score===''||max==='') return;
     s.exams = s.exams||[]; s.exams.push({name,date,score,max});
+    addLog(s, `أضاف درجة ${name}: ${score} من ${max}`);
     await saveStudent(code, s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s);
     renderStudentEditor();
   });
@@ -1713,6 +1757,7 @@ async function renderStudentEditor(){
     const date = document.getElementById('payDate').value;
     if(!term||amount==='') return;
     s.payments = s.payments||[]; s.payments.push({term,amount,status,date});
+    addLog(s, `سجّل مدفوعات: ${term} — ${amount} جنيه (${status==='paid'?'مدفوع':'غير مدفوع'})`);
     await saveStudent(code, s); renderStudentEditor();
   });
   document.getElementById('waPayBtn').addEventListener('click', ()=>{
@@ -1727,13 +1772,13 @@ async function renderStudentEditor(){
     if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
   $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.attendance.splice(Number(b.dataset.delAtt),1); await saveStudent(code,s); await syncStudentRisk(code, s); renderStudentEditor();
+    const delIdx4=Number(b.dataset.delAtt); addLog(s,`حذف سجل حضور يوم ${fmtDate(s.attendance[delIdx4]?.date||'')}`); s.attendance.splice(delIdx4,1); await saveStudent(code,s); await syncStudentRisk(code, s); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.exams.splice(Number(b.dataset.delExam),1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); renderStudentEditor();
+    const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
-    s.payments.splice(Number(b.dataset.delPay),1); await saveStudent(code,s); renderStudentEditor();
+    const delIdx6=Number(b.dataset.delPay); addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); renderStudentEditor();
   }));
   document.getElementById('delStudent').addEventListener('click', async ()=>{
     if(!confirm('متأكد من حذف الطالب؟ هتقدر تسترجعه بعدين من سلة المحذوفات.')) return;
