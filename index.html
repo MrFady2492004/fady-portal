@@ -531,7 +531,7 @@ function examsChartSVG(exams){
 function attendanceChartSVG(att){
   att = att||[];
   if(!att.length){
-    return `<div class="empty">لسه مفيش سجل حضور يتعمله رسم بياني</div>`;
+    return `<div class="empty">لسه مفيش سجل حضور </div>`;
   }
   const present = att.filter(a=>a.status==='present').length;
   const absent = att.filter(a=>a.status==='absent').length;
@@ -543,7 +543,6 @@ function attendanceChartSVG(att){
   const bars = [
     {label:'حاضر', val:present, color:'var(--good)'},
     {label:'غائب', val:absent, color:'var(--warn)'},
-    {label:'متأخر', val:late, color:'var(--late)'}
   ];
   const totalW = bars.length*barW + (bars.length-1)*gap;
   const startX = (W-totalW)/2;
@@ -627,7 +626,7 @@ function buildBgFx(){
       <path d="M0 30 Q 150 5, 300 32 T 600 28 T 1000 30" fill="none" stroke-width="2" stroke-dasharray="2 14" stroke-linecap="round"/>
     </svg>`;
   let sparks = '';
-  const glyphs = ['✦','✧','⚓','★'];
+  const glyphs = ['✦','✧','⚓','★','Mr.Fady','مستر فادي'];
   for(let i=0;i<10;i++){
     const left = Math.round(Math.random()*96)+'vw';
     const dur = (22+Math.random()*22).toFixed(1)+'s';
@@ -699,7 +698,7 @@ async function renderHome(){
     <div class="hero">
       <div class="eyebrow">بوابة أولياء الأمور</div>
       <h1>اطمئن على مستوى ابنك أول بأول</h1>
-      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات، وحالة المصروفات.</p>
+      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات.</p>
       <form class="code-form" id="codeForm">
         <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
         <button class="btn btn-brass" type="submit">عرض الكشف</button>
@@ -708,7 +707,7 @@ async function renderHome(){
     </div>
     ${ top10.length ? `
     <div class="card">
-      <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار السنتر</div>
+      <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار في السنتر</div>
       ${top10.map((s,i)=>`
         <div class="student-pick">
           <div style="display:flex;align-items:center;gap:10px;">
@@ -788,7 +787,7 @@ function renderReport(){
         <div class="field"><label>تاريخ الميلاد</label><input type="date" id="parentBirthdateInput" value="${s.birthdate||''}"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ</button>
       </form>
-      <p class="hint" style="margin:8px 0 0;text-align:right;">هنفتكر المدرّس بعيد ميلاد ابنك عشان يبعتله تهنئة 🎉</p>
+      <p class="hint" style="margin:8px 0 0;text-align:right;"> 🎉</p>
     </div>
 
     <div class="card">
@@ -797,7 +796,7 @@ function renderReport(){
         <div class="field"><label>رقم الواتساب (مثال: 201012345678)</label><input type="tel" id="parentWhatsappInput" placeholder="201012345678" value="${s.parentPhone||''}" dir="ltr"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ الرقم</button>
       </form>
-      <p class="hint" style="margin:8px 0 0;text-align:right;">الرقم ده بيستخدمه المدرّس عشان يبعتلك إشعارات الحضور والدرجات على واتساب.</p>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">الرقم ده بيستخدمه مستر فادي عشان يبعتلك إشعارات الحضور والدرجات على واتساب.</p>
     </div>
 
     <div class="stats">
