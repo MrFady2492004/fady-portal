@@ -228,6 +228,31 @@
   .stars-row-item:last-child{border-bottom:none;}
   .stars-row-item .s-lbl{font-size:13px;color:var(--muted);min-width:110px;}
   .stars-all{display:flex;gap:3px;margin-top:10px;flex-wrap:wrap;align-items:center;}
+
+  /* ===== Progress Bar للحضور ===== */
+  .att-progress-wrap{margin-top:8px;background:#E8E8E4;border-radius:30px;height:10px;overflow:hidden;position:relative;}
+  .att-progress-bar{height:100%;border-radius:30px;transition:width 1s cubic-bezier(.4,0,.2,1);position:relative;}
+  .att-progress-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(255,255,255,.25) 0%,transparent 100%);border-radius:30px;}
+
+  /* ===== تهنئة عيد الميلاد ===== */
+  .birthday-banner{
+    background:linear-gradient(135deg,#FFF4D6,#FFE8A0);
+    border:2px solid #D9A52A;border-radius:var(--radius);
+    padding:18px 22px;margin-bottom:18px;
+    display:flex;align-items:center;gap:14px;
+    animation:bdBounce .6s ease;
+  }
+  .birthday-banner .bd-icon{font-size:42px;animation:bdSpin 2s ease infinite;}
+  .birthday-banner .bd-text{font-family:'Cairo',sans-serif;font-weight:800;font-size:17px;color:#7A4A00;}
+  .birthday-banner .bd-sub{font-size:13px;font-weight:500;color:#9B6300;margin-top:2px;}
+  @keyframes bdBounce{0%{transform:scale(.7);opacity:0;}70%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
+  @keyframes bdSpin{0%,100%{transform:rotate(-10deg);}50%{transform:rotate(10deg);}}
+
+  /* ===== أنيميشن النجوم ===== */
+  @keyframes starPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}60%{transform:scale(1.3) rotate(5deg);opacity:1;}100%{transform:scale(1) rotate(0deg);opacity:1;}}
+  @keyframes starGlow{0%,100%{filter:drop-shadow(0 0 0px #D9A52A);}50%{filter:drop-shadow(0 0 6px #D9A52A);}}
+  .star-anim{display:inline-block;animation:starPop .45s cubic-bezier(.4,0,.2,1) both, starGlow 2s ease 1s infinite;}
+
   /* ===== بطاقة المشاركة (canvas) ===== */
   #shareCardCanvas{width:100%;border-radius:12px;border:1px solid var(--line);display:none;margin-bottom:12px;}
   .share-info{padding:10px 14px;background:#EEF5FF;border:1px solid #C0D4F0;border-radius:8px;font-size:13px;color:#1A4A8A;margin-bottom:10px;}
@@ -427,9 +452,14 @@ function starSVG(filled, color, size){
   color = color||'#D9A52A'; size = size||18;
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled?color:'none'}" stroke="${color}" stroke-width="1.5" style="vertical-align:middle;flex-shrink:0;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 }
-function starsRowHTML(count, maxStars, color, size){
+function starsRowHTML(count, maxStars, color, size, animate){
   maxStars = maxStars||3; color = color||'#D9A52A'; size = size||18;
-  return Array.from({length:maxStars}).map((_,i)=>starSVG(i<count,color,size)).join('');
+  return Array.from({length:maxStars}).map((_,i)=>{
+    const filled = i < count;
+    const cls = (animate && filled) ? ' class="star-anim"' : '';
+    const delay = animate && filled ? ` style="animation-delay:${i*0.12}s"` : '';
+    return `<span${cls}${delay}>${starSVG(filled,color,size)}</span>`;
+  }).join('');
 }
 /* مؤشر الخطر: 3 غيابات متتالية (آخر شيء مسجّل) أو 3 درجات ضعيفة متتالية (أقل من 65%) */
 function riskStatus(s){
@@ -837,11 +867,35 @@ function renderReport(){
       ${ isParentVerified(s) ? '<p class="hint" style="margin:4px 0 0;text-align:right;color:var(--good);">✅ تم التحقق من هويتك</p>' : '' }
     </div>
 
-    <div class="stats">
-      <div class="stat ${att.pct>=85?'good':'warn'}"><div class="num">${att.pct}%</div><div class="lbl">نسبة الحضور</div></div>
+    <div class="stats" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat ${att.pct>=85?'good':'warn'}">
+        <div class="num">${att.pct}%</div>
+        <div class="lbl">نسبة الحضور</div>
+        <div class="att-progress-wrap">
+          <div class="att-progress-bar" style="width:${att.pct}%;background:${att.pct>=85?'var(--good)':'var(--warn)'};"></div>
+        </div>
+      </div>
       <div class="stat ${avg===null?'':(avg>=65?'good':'warn')}"><div class="num">${avg===null?'—':avg+'%'}</div><div class="lbl">متوسط الامتحانات</div></div>
       <div class="stat ${pay.due>0?'warn':'good'}"><div class="num">${pay.due}</div><div class="lbl">متبقي عليه (جنيه)</div></div>
+      <div class="stat" id="starsStatCard"><div class="num" style="color:var(--brass);font-size:20px;">جاري...</div><div class="lbl">⭐ النجوم</div></div>
     </div>
+
+    ${ (()=>{
+      if(!s.birthdate) return '';
+      const today = new Date();
+      const bd = new Date(s.birthdate);
+      if(bd.getMonth()===today.getMonth() && bd.getDate()===today.getDate()){
+        const age = today.getFullYear() - bd.getFullYear();
+        return `<div class="birthday-banner">
+          <div class="bd-icon">🎂</div>
+          <div>
+            <div class="bd-text">🎉 عيد ميلاد سعيد يا ${s.name||''}!</div>
+            <div class="bd-sub">يسعدنا نهنئك بمرور ${age} سنة — كل عام وأنت بخير 🌟</div>
+          </div>
+        </div>`;
+      }
+      return '';
+    })() }
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> سجل الحضور والغياب</div>
@@ -925,13 +979,22 @@ function renderReport(){
   `;
   // بطاقة النجوم لولي الأمر
   (()=>{
-    const wrap = document.getElementById('parentStarsWrap');
-    if(!wrap) return;
     const attStats = attendanceStats(s.attendance);
     const exams = s.exams||[];
     const examPts = totalPoints(exams);
     const attPt = attStar(attStats.pct);
     const totalPts = examPts + attPt;
+
+    // ملء الكارت الرابع
+    const starsStatCard = document.getElementById('starsStatCard');
+    if(starsStatCard){
+      const starsStr = totalPts > 0 ? '⭐'.repeat(Math.min(totalPts,10)) : '—';
+      starsStatCard.innerHTML = `<div class="num" style="color:var(--brass);font-size:${totalPts<=5?'26px':'18px'};letter-spacing:1px;">${starsStr}</div><div class="lbl">النجوم المكتسبة</div>`;
+    }
+
+    // تفاصيل بطاقة النجوم المنفصلة
+    const wrap = document.getElementById('parentStarsWrap');
+    if(!wrap) return;
     let badge = '';
     if(totalPts >= 9) badge = '<span class="stars-badge gold">🏆 ممتاز</span>';
     else if(totalPts >= 5) badge = '<span class="stars-badge green">⭐ جيد جداً</span>';
@@ -948,22 +1011,22 @@ function renderReport(){
     `;
     if(exams.length){
       html += '<div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px;">تفاصيل الامتحانات</div>';
-      exams.slice().reverse().forEach(e=>{
+      exams.slice().reverse().forEach((e,idx2)=>{
         const pts = examPoints(Number(e.score), Number(e.max));
         html += `<div class="stars-row-item">
           <span class="s-lbl">${e.name}</span>
-          <span>${starsRowHTML(pts,3,'#D9A52A',18)}</span>
+          <span>${starsRowHTML(pts,3,'#D9A52A',18,true)}</span>
           <span class="meta" style="font-size:12px;margin-right:6px;">${e.score}/${e.max}</span>
         </div>`;
       });
     }
     html += `<div class="stars-row-item" style="margin-top:6px;">
       <span class="s-lbl">نجمة الحضور (${attStats.pct}%)</span>
-      <span>${starsRowHTML(attPt,1,'#2F7A52',18)}</span>
+      <span>${starsRowHTML(attPt,1,'#2F7A52',18,true)}</span>
       <span class="meta" style="font-size:12px;margin-right:6px;">${attPt===1?'تم الحصول عليها ✅':'لم تُكتسب بعد'}</span>
     </div>`;
     if(totalPts > 0){
-      html += `<div class="stars-all">${starsRowHTML(totalPts, Math.max(totalPts,1), '#D9A52A', 22)}</div>`;
+      html += `<div class="stars-all">${starsRowHTML(totalPts, Math.max(totalPts,1), '#D9A52A', 22, true)}</div>`;
     }
     wrap.innerHTML = html;
   })();
@@ -983,12 +1046,26 @@ function renderReport(){
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#13222F'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#A87C2E'; ctx.fillRect(0,0,W,6); ctx.fillRect(0,H-6,W,6);
+    // صورة المعلم (دائرة صغيرة يمين فوق)
+    const teacherPhotoSize = 48;
+    const tpX = W - 28 - teacherPhotoSize, tpY = 18;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(tpX + teacherPhotoSize/2, tpY + teacherPhotoSize/2, teacherPhotoSize/2, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+    if(TEACHER.photo && TEACHER.photo.startsWith('data:')){
+      const tImg = new Image(); tImg.src = TEACHER.photo;
+      try{ ctx.drawImage(tImg, tpX, tpY, teacherPhotoSize, teacherPhotoSize); }catch(e){}
+    } else {
+      ctx.fillStyle='#23375A'; ctx.fillRect(tpX, tpY, teacherPhotoSize, teacherPhotoSize);
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(tpX + teacherPhotoSize/2, tpY + teacherPhotoSize/2, teacherPhotoSize/2+2, 0, Math.PI*2); ctx.strokeStyle='#D9A52A'; ctx.lineWidth=2; ctx.stroke();
+    // اسم المعلم بجانب صورته
     ctx.direction='rtl'; ctx.textAlign='right';
-    ctx.font='bold 15px Tajawal,Cairo,sans-serif'; ctx.fillStyle='#D9B568';
-    ctx.fillText(TEACHER.name, W-28, 38);
-    ctx.font='13px Tajawal,sans-serif'; ctx.fillStyle='#C9D2E0';
-    ctx.fillText(TEACHER.subject, W-28, 58);
-    ctx.fillText(TEACHER.phone, W-28, 76);
+    ctx.font='bold 14px Tajawal,Cairo,sans-serif'; ctx.fillStyle='#D9B568';
+    ctx.fillText(TEACHER.name, tpX - 8, tpY + 18);
+    ctx.font='12px Tajawal,sans-serif'; ctx.fillStyle='#C9D2E0';
+    ctx.fillText(TEACHER.subject, tpX - 8, tpY + 34);
+    ctx.fillText(TEACHER.phone, tpX - 8, tpY + 50);
     const cx=120, cy=160, r=70;
     ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.closePath(); ctx.clip();
     if(s.photo){ const img=new Image(); img.src=s.photo; try{ctx.drawImage(img,cx-r,cy-r,r*2,r*2);}catch(e){} }
