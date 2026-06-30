@@ -1300,6 +1300,9 @@ async function renderTeacherPanel(){
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-brass btn-sm" id="exportStudentsExcelBtn">📊 تصدير بيانات الطلاب (Excel)</button>
+      </div>
       <div class="form-grid" style="margin-bottom:12px;">
         <div class="field" style="grid-column:1/-1;">
           <input type="text" id="studentSearchInput" placeholder="ابحث بالاسم أو الكود..." value="${(state.studentSearch||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13.5px;color:var(--ink);">
@@ -1648,6 +1651,35 @@ async function renderTeacherPanel(){
         });
       });
     }
+  });
+
+  document.getElementById('exportStudentsExcelBtn').addEventListener('click', ()=>{
+    const idx = state.index||[];
+    if(!idx.length){ toast('لا يوجد طلاب لتصديرهم'); return; }
+    const headers = ['اسم الطالب','المرحلة','الكود','رقم موبايل ولي الأمر'];
+    const rows = idx.map(s=>[
+      s.name||'',
+      s.klass||'',
+      s.code||'',
+      s.parentPhone||''
+    ]);
+    // بناء CSV مع BOM عشان العربي يظهر صح في Excel
+    function csvEscape(val){
+      val = String(val??'');
+      if(/[",\n]/.test(val)) return '"'+val.replace(/"/g,'""')+'"';
+      return val;
+    }
+    let csv = '\uFEFF';
+    csv += headers.map(csvEscape).join(',') + '\r\n';
+    rows.forEach(r=> csv += r.map(csvEscape).join(',') + '\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.href = url; a.download = `بيانات_الطلاب-${dateStr}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('تم تنزيل ملف الطلاب ✅');
   });
 
   document.getElementById('exportBackupBtn').addEventListener('click', async ()=>{
