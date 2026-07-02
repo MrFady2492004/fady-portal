@@ -1299,7 +1299,13 @@ async function renderTeacherPanel(){
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> الطلاب (${state.index.length})</div>
+      <div class="card-title"><span class="dot"></span> الطلاب 
+        <span style="font-size:13px;font-weight:500;color:var(--muted);margin-right:6px;">
+          ${state.classFilter 
+            ? `${state.index.filter(s=>(s.klass||'').trim()===state.classFilter).length} طالب في ${state.classFilter}`
+            : `${state.index.length} طالب إجمالي`}
+        </span>
+      </div>
       <div style="margin-bottom:12px;">
         <button class="btn btn-brass btn-sm" id="exportStudentsExcelBtn">📊 تصدير بيانات الطلاب (Excel)</button>
       </div>
@@ -1310,8 +1316,11 @@ async function renderTeacherPanel(){
         <div class="field">
           <label>تصفية حسب الصف</label>
           <select id="studentClassFilter">
-            <option value="">كل الصفوف</option>
-            ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}" ${state.classFilter===c?'selected':''}>${c}</option>`).join('')}
+            <option value="">كل الصفوف (${state.index.length})</option>
+            ${classOptionsFromIndex(state.index).map(c=>{
+              const cnt = state.index.filter(s=>(s.klass||'').trim()===c).length;
+              return `<option value="${c}" ${state.classFilter===c?'selected':''}>${c} (${cnt} طالب)</option>`;
+            }).join('')}
           </select>
         </div>
       </div>
