@@ -1045,41 +1045,40 @@ function renderReport(){
       <div class="hero-badge" style="background:${badge.bg};">${badge.text}</div>
     </div>
 
+    ${ !s.photo ? `
     <div class="card">
       <div class="card-title"><span class="dot"></span> صورة الطالب</div>
       <div class="row" style="align-items:center;gap:14px;">
-        ${s.photo
-          ? `<img id="parentPhotoPreview" src="${s.photo}" alt="${s.name}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--brass);flex-shrink:0;">`
-          : `<div id="parentPhotoPreview" style="width:64px;height:64px;border-radius:50%;background:var(--paper2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
-        }
+        <div id="parentPhotoPreview" style="width:64px;height:64px;border-radius:50%;background:var(--paper2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-block;width:fit-content;">
-            ${s.photo ? 'تغيير الصورة' : 'رفع صورة'}
+            رفع صورة
             <input type="file" id="parentPhotoInput" accept="image/*" style="display:none;">
           </label>
         </div>
       </div>
       <p class="hint" style="margin:10px 0 0;text-align:right;">ارفع صورة شخصية واضحة للطالب (مربعة أو دائرية الشكل).</p>
-    </div>
+    </div>` : `<input type="file" id="parentPhotoInput" accept="image/*" style="display:none;">` }
 
+    ${ !s.birthdate ? `
     <div class="card">
       <div class="card-title"><span class="dot"></span> تاريخ ميلاد الطالب</div>
       <form id="parentBirthdateForm" class="form-grid" style="align-items:end;">
-        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="parentBirthdateInput" value="${s.birthdate||''}"></div>
+        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="parentBirthdateInput" value=""></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ</button>
       </form>
       <p class="hint" style="margin:8px 0 0;text-align:right;"> 🎉</p>
-    </div>
+    </div>` : '' }
 
+    ${ !s.parentPhone ? `
     <div class="card">
       <div class="card-title"><span class="dot"></span> رقم واتساب ولي الأمر</div>
       <form id="parentWhatsappForm" class="form-grid" style="align-items:end;">
-        <div class="field"><label>رقم الواتساب (مثال: 201012345678)</label><input type="tel" id="parentWhatsappInput" placeholder="201012345678" value="${s.parentPhone||''}" dir="ltr"></div>
+        <div class="field"><label>رقم الواتساب (مثال: 201012345678)</label><input type="tel" id="parentWhatsappInput" placeholder="201012345678" value="" dir="ltr"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ الرقم</button>
       </form>
       <p class="hint" style="margin:8px 0 0;text-align:right;">الرقم ده بيستخدمه مستر فادي عشان يبعتلك إشعارات الحضور والدرجات على واتساب.</p>
-      ${ isParentVerified(s) ? '<p class="hint" style="margin:4px 0 0;text-align:right;color:var(--good);">✅ تم التحقق من هويتك</p>' : '' }
-    </div>
+    </div>` : '' }
 
     <div class="stats" style="grid-template-columns:repeat(4,1fr);">
       <div class="stat ${att.pct>=85?'good':'warn'}">
@@ -1330,12 +1329,13 @@ function renderReport(){
       const idx = await getIndex();
       const entry = idx.find(x=>x.code===state.code);
       if(entry){ entry.photo = s.photo; await saveIndex(idx); }
-      toast('تم رفع الصورة');
+      toast('تم رفع الصورة ✅');
       renderReport();
     };
     reader.readAsDataURL(file);
   });
-  document.getElementById('parentBirthdateForm').addEventListener('submit', async (e)=>{
+  const bdForm = document.getElementById('parentBirthdateForm');
+  if(bdForm) bdForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const bd = document.getElementById('parentBirthdateInput').value;
     s.birthdate = bd;
@@ -1343,9 +1343,11 @@ function renderReport(){
     const idx = await getIndex();
     const entry = idx.find(x=>x.code===state.code);
     if(entry){ entry.birthdate = bd; await saveIndex(idx); }
-    toast('تم حفظ تاريخ الميلاد');
+    toast('تم حفظ تاريخ الميلاد 🎂');
+    renderReport();
   });
-  document.getElementById('parentWhatsappForm').addEventListener('submit', async (e)=>{
+  const waForm = document.getElementById('parentWhatsappForm');
+  if(waForm) waForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const phone = document.getElementById('parentWhatsappInput').value.trim();
     s.parentPhone = phone;
