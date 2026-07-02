@@ -244,6 +244,42 @@
   .stars-row-item .s-lbl{font-size:13px;color:var(--muted);min-width:110px;}
   .stars-all{display:flex;gap:3px;margin-top:10px;flex-wrap:wrap;align-items:center;}
 
+  /* ===== خلفية موسمية ===== */
+  body.season-ramadan{background:linear-gradient(160deg,#1a0a2e 0%,#2d1459 40%,#1a0a2e 100%) !important;}
+  body.season-ramadan #app{--paper:#1a0a2e;--paper2:#2d1459;--card:#2a1150;--line:#4a2a7a;--ink:#F5E6C8;--ink2:#D4B896;--muted:#9a7ab8;}
+  body.season-christmas{background:linear-gradient(160deg,#0d2818 0%,#1a4d2e 40%,#0d2818 100%) !important;}
+  body.season-christmas #app{--paper:#0d2818;--paper2:#1a4d2e;--card:#163d22;--line:#2d6b3a;--ink:#F5F5F0;--ink2:#E0E0D8;--muted:#8aab90;}
+  body.season-summer{background:var(--paper) !important;}
+  body.season-winter{background:linear-gradient(160deg,#E8EEF5 0%,#D5E3F0 100%) !important;}
+
+  /* ===== فانوس رمضان ===== */
+  .ramadan-deco{position:fixed;top:0;left:0;right:0;pointer-events:none;z-index:0;overflow:hidden;height:120px;}
+  .ramadan-deco svg{width:100%;height:100%;}
+
+  /* ===== ثلج الكريسماس ===== */
+  .snowflake{position:fixed;top:-20px;color:#fff;font-size:1.2em;opacity:.7;animation:snowfall linear infinite;pointer-events:none;z-index:0;}
+  @keyframes snowfall{0%{transform:translateY(-20px) rotate(0deg);opacity:.8;}100%{transform:translateY(105vh) rotate(360deg);opacity:0;}}
+
+  /* ===== Hero Header للطالب ===== */
+  .student-hero{
+    position:relative;overflow:hidden;
+    border-radius:var(--radius);margin-bottom:18px;
+    padding:32px 24px 28px;
+    background:linear-gradient(135deg,var(--ink) 0%,var(--ink2) 100%);
+    color:#fff;text-align:center;
+  }
+  .student-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+  .hero-photo-wrap{position:relative;display:inline-block;margin-bottom:14px;}
+  .hero-photo{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--brass);display:block;}
+  .hero-photo-placeholder{width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.15);border:3px solid var(--brass);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:32px;color:var(--brass);}
+  .hero-status-dot{position:absolute;bottom:4px;right:4px;width:18px;height:18px;border-radius:50%;border:2px solid var(--ink);background:#6c757d;}
+  .hero-status-dot.online{background:#25D366;}
+  .hero-status-dot.absent{background:#dc3545;}
+  .hero-name{font-family:'Cairo',sans-serif;font-weight:900;font-size:22px;margin-bottom:4px;}
+  .hero-meta{font-size:13px;opacity:.75;margin-bottom:12px;}
+  .hero-badge{display:inline-block;padding:5px 16px;border-radius:30px;font-weight:800;font-size:13px;background:var(--brass);color:#fff;}
+  .hero-greeting{font-size:13px;opacity:.8;margin-bottom:8px;font-style:italic;}
+
   /* ===== شريط التواصل الثابت ===== */
   .contact-bar{
     position:fixed;bottom:0;left:0;right:0;z-index:900;
@@ -361,6 +397,72 @@ const CLASS_LEVELS = ['رابعة ابتدائي','خمسة ابتدائي','س�
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
+function getSeasonInfo(){
+  const now = new Date();
+  const m = now.getMonth()+1, d = now.getDate();
+  if(m===12){ return {cls:'season-christmas', emoji:'🎄'}; }
+  if((m===2&&d>=28)||(m===3&&d<=28)){ return {cls:'season-ramadan', emoji:'🌙'}; }
+  if(m>=6&&m<=8){ return {cls:'season-summer', emoji:'☀️'}; }
+  if(m===11||m===1){ return {cls:'season-winter', emoji:'❄️'}; }
+  return {cls:'', emoji:''};
+}
+
+function applySeasonTheme(){
+  document.body.classList.remove('season-ramadan','season-christmas','season-summer','season-winter');
+  document.querySelectorAll('.ramadan-deco,.snowflake').forEach(el=>el.remove());
+  const s = getSeasonInfo();
+  if(!s.cls) return;
+  document.body.classList.add(s.cls);
+  if(s.cls==='season-christmas'){
+    const emojis=['❄️','⛄','🎄','✨','🎅','⭐'];
+    for(let i=0;i<18;i++){
+      const el=document.createElement('div');
+      el.className='snowflake';
+      el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      el.style.cssText=`left:${Math.random()*100}%;font-size:${0.8+Math.random()*1.4}em;animation-duration:${4+Math.random()*8}s;animation-delay:${Math.random()*6}s;`;
+      document.body.appendChild(el);
+    }
+  }
+  if(s.cls==='season-ramadan'){
+    const deco=document.createElement('div');
+    deco.className='ramadan-deco';
+    deco.innerHTML=`<svg viewBox="0 0 800 100" xmlns="http://www.w3.org/2000/svg">
+      ${[0,1,2,3,4,5,6,7].map(i=>{
+        const x=50+i*100,h=40+Math.floor(Math.random()*25);
+        return `<rect x="${x}" y="0" width="22" height="${h}" rx="3" fill="#D9A52A" opacity="0.5"/>`;
+      }).join('')}
+      <path d="M0,70 Q200,30 400,70 Q600,110 800,70" stroke="#D9A52A" stroke-width="1.5" fill="none" opacity="0.35"/>
+    </svg>`;
+    document.body.appendChild(deco);
+  }
+}
+
+function getGreeting(name){
+  const h = new Date().getHours();
+  const s = getSeasonInfo();
+  let g='';
+  if(h>=5&&h<12) g=`صباح الخير يا والد/والدة ${name||''} 🌅`;
+  else if(h>=12&&h<17) g=`مساء الخير يا والد/والدة ${name||''} ☀️`;
+  else if(h>=17&&h<21) g=`مساء النور يا والد/والدة ${name||''} 🌆`;
+  else g=`أهلاً بيك يا والد/والدة ${name||''} 🌙`;
+  if(s.cls==='season-christmas') g+=' — كل عام وأنتم بخير 🎄';
+  if(s.cls==='season-ramadan') g+=' — رمضان كريم 🌙';
+  return g;
+}
+
+function getHeroBadge(totalPts, attPct){
+  if(totalPts>=9&&attPct>=90) return {text:'🏆 طالب ممتاز', bg:'#A87C2E'};
+  if(totalPts>=6||attPct>=90) return {text:'⭐ طالب مجتهد', bg:'#2F7A52'};
+  if(totalPts>=3) return {text:'✨ في الطريق الصح', bg:'#4A6FA5'};
+  return {text:'📚 مستمر في التعلم', bg:'#5B6470'};
+}
+
+function getLastAttStatus(att){
+  if(!att||!att.length) return 'unknown';
+  const last=[...att].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+  return last.status==='حاضر'?'online':'absent';
+}
+
 function buildContactBar(){
   const T = TEACHER;
   const phone = T.phone||'';
@@ -912,21 +1014,35 @@ function renderReport(){
   const att = attendanceStats(s.attendance);
   const avg = examsAvg(s.exams);
   const pay = paymentsSummary(s.payments);
+  const examPts = totalPoints(s.exams||[]);
+  const attPt = attStar(att.pct);
+  const totalPts = examPts + attPt;
+  const badge = getHeroBadge(totalPts, att.pct);
+  const attStatus = getLastAttStatus(s.attendance);
+  const greeting = getGreeting(s.name);
+
+  // تطبيق ثيم الموسم
+  applySeasonTheme();
 
   $app.innerHTML = `
     ${brandbar(false)}
     <div class="topnav">
       <div class="back" id="toHome">→ بحث بكود تاني</div>
     </div>
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
-      <div class="row" style="align-items:center;gap:12px;">
+
+    <!-- Hero Header -->
+    <div class="student-hero">
+      <div class="hero-greeting">${greeting}</div>
+      <div class="hero-photo-wrap">
         ${s.photo
-          ? `<img src="${s.photo}" alt="${s.name}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--brass);flex-shrink:0;">`
-          : `<div style="width:56px;height:56px;border-radius:50%;background:var(--paper2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--brass);flex-shrink:0;">${(s.name||'?').trim().charAt(0)}</div>`
+          ? `<img class="hero-photo" src="${s.photo}" alt="${s.name}">`
+          : `<div class="hero-photo-placeholder">${(s.name||'?').trim().charAt(0)}</div>`
         }
-        <span><strong>${s.name}</strong></span><span class="meta">الصف: ${s.klass||'—'} · الكود: ${state.code}</span>
+        <div class="hero-status-dot ${attStatus}" title="${attStatus==='online'?'حضر آخر حصة':'غاب آخر حصة'}"></div>
       </div>
+      <div class="hero-name">${s.name||''}</div>
+      <div class="hero-meta">${s.klass||''} · الكود: ${state.code}</div>
+      <div class="hero-badge" style="background:${badge.bg};">${badge.text}</div>
     </div>
 
     <div class="card">
@@ -1315,18 +1431,6 @@ async function renderTeacherPanel(){
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> توزيع درجات امتحان على كل الطلاب دفعة واحدة</div>
-      <div class="form-grid">
-        <div class="field"><label>اسم الامتحان</label><input type="text" id="bgExamName" placeholder="مثال: شهر مارس"></div>
-        <div class="field"><label>التاريخ</label><input type="date" id="bgExamDate"></div>
-        <div class="field"><label>من</label><input type="number" id="bgExamMax" value="100"></div>
-      </div>
-      <p class="hint" style="margin:0 0 10px;text-align:right;">الصق من الشيت: <strong>اسم الطالب، الدرجة</strong> — كل طالب في سطر. لازم الاسم يكون مطابق لاسم الطالب المسجّل عندك بالظبط.</p>
-      <textarea id="bulkGrades" rows="4" placeholder="أحمد علي&#9;88&#10;سارة محمد&#9;95" style="width:100%;padding:10px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13px;font-family:inherit;color:var(--ink);resize:vertical;"></textarea>
-      <button class="btn btn-brass btn-sm" id="bulkGradesBtn" style="margin-top:10px;">توزيع الدرجات على الكل</button>
-    </div>
-
-    <div class="card">
       <div class="card-title"><span class="dot"></span> 📝 إدخال درجات الفصل — جدول سريع</div>
       <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل والامتحان، وادخل درجة كل طالب مباشرة في الجدول — بدون ما تفتح أي طالب.</p>
       <div class="form-grid" style="margin-bottom:12px;">
@@ -1511,36 +1615,6 @@ async function renderTeacherPanel(){
     renderTeacherPanel();
   });
 
-  document.getElementById('bulkGradesBtn').addEventListener('click', async ()=>{
-    const examName = document.getElementById('bgExamName').value.trim();
-    const examDate = document.getElementById('bgExamDate').value;
-    const examMax = document.getElementById('bgExamMax').value || '100';
-    const raw = document.getElementById('bulkGrades').value;
-    const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!examName){ toast('اكتب اسم الامتحان الأول'); return; }
-    if(!lines.length){ toast('الصق أسماء ودرجات الطلاب الأول'); return; }
-    const idx = await getIndex();
-    let matched=0; const notFound=[];
-    for(const line of lines){
-      const cols = line.split(/\t|,/).map(c=>c.trim());
-      const name = cols[0]||'';
-      const score = cols[1];
-      if(!name || score===undefined || score==='') continue;
-      const found = idx.find(x=> x.name.trim() === name.trim() );
-      if(!found){ notFound.push(name); continue; }
-      const st = await getStudent(found.code);
-      if(!st) { notFound.push(name); continue; }
-      st.exams = st.exams||[];
-      st.exams.push({name:examName, date:examDate, score, max:examMax});
-      await saveStudent(found.code, st);
-      found.points = totalPoints(st.exams);
-      found.risk = riskStatus(st).atRisk;
-      matched++;
-    }
-    await saveIndex(idx);
-    toast(`تم رصد الدرجة لـ ${matched} طالب${notFound.length? ' — مش موجودين: '+notFound.join('، '):''}`);
-    document.getElementById('bulkGrades').value='';
-  });
 
   // ===== جدول الدرجات السريع =====
   document.getElementById('quickGradeLoadBtn').addEventListener('click', ()=>{
@@ -2349,9 +2423,9 @@ async function renderStudentEditor(){
 }
 
 function render(){
-  if(state.view==='home'){ removeContactBar(); renderHome(); }
+  if(state.view==='home'){ removeContactBar(); applySeasonTheme(); renderHome(); }
   else if(state.view==='report'){ renderReport(); buildContactBar(); }
-  else if(state.view==='teacherLogin'){ removeContactBar(); renderTeacherLogin(); }
+  else if(state.view==='teacherLogin'){ removeContactBar(); document.body.classList.remove('season-ramadan','season-christmas','season-summer','season-winter'); document.querySelectorAll('.ramadan-deco,.snowflake').forEach(el=>el.remove()); renderTeacherLogin(); }
   else if(state.view==='teacherPanel'){ removeContactBar(); renderTeacherPanel(); }
   else if(state.view==='studentEditor'){ removeContactBar(); renderStudentEditor(); }
 }
