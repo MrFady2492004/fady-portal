@@ -232,6 +232,24 @@
   .seg-btn.active[data-status="present"]{background:var(--good-bg);color:var(--good);border-color:var(--good);}
   .seg-btn.active[data-status="absent"]{background:var(--warn-bg);color:var(--warn);border-color:var(--warn);}
 
+  /* ===== Loading Overlay ===== */
+  #loadingOverlay{
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(21,34,56,.55);
+    backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;
+  }
+  #loadingOverlay.show{display:flex;}
+  .loading-spinner{
+    width:48px;height:48px;border-radius:50%;
+    border:4px solid rgba(255,255,255,.2);
+    border-top-color:var(--brass);
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-msg{color:#fff;font-family:'Cairo',sans-serif;font-weight:700;font-size:15px;}
+
   /* ===== بطاقة النجوم ===== */
   .stars-card-inner{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
   .stars-big-num{font-family:'Cairo',sans-serif;font-weight:900;font-size:28px;color:var(--brass);}
@@ -409,6 +427,10 @@
 </head>
 <body>
 <div id="bgfx"></div>
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-msg" id="loadingMsg">جاري التحميل...</div>
+</div>
 <div id="app"></div>
 <div class="toast" id="toast"></div>
 
@@ -551,6 +573,33 @@ function removeContactBar(){
 /* ---------------- Storage helpers (Firebase Realtime Database) ---------------- */
 const DB_URL = 'https://fady-portal01-default-rtdb.firebaseio.com';
 
+/* ===== Loading Overlay ===== */
+const $loading = document.getElementById('loadingOverlay');
+const $loadingMsg = document.getElementById('loadingMsg');
+function showLoading(msg){ $loadingMsg.textContent = msg||'جاري التحميل...'; $loading.classList.add('show'); }
+function hideLoading(){ $loading.classList.remove('show'); }
+
+/* ===== Cache (localStorage) ===== */
+const CACHE_TTL = 5 * 60 * 1000; // 5 دقايق
+const CACHE_PREFIX = 'fady_portal_';
+
+function cacheSet(key, value){
+  try{
+    localStorage.setItem(CACHE_PREFIX+key, JSON.stringify({v:value, t:Date.now()}));
+  }catch(e){}
+}
+function cacheGet(key){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX+key);
+    if(!raw) return null;
+    const item = JSON.parse(raw);
+    if(Date.now() - item.t > CACHE_TTL){ localStorage.removeItem(CACHE_PREFIX+key); return null; }
+    return item.v;
+  }catch(e){ return null; }
+}
+function cacheDelete(key){ try{ localStorage.removeItem(CACHE_PREFIX+key); }catch(e){} }
+function cacheClear(){ try{ Object.keys(localStorage).filter(k=>k.startsWith(CACHE_PREFIX)).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+
 async function dbGet(path){
   try{
     const r = await fetch(DB_URL + '/' + path + '.json');
@@ -574,17 +623,27 @@ async function dbDelete(path){
 }
 
 async function getIndex(){
+  const cached = cacheGet('index');
+  if(cached) return cached;
   const v = await dbGet('index');
-  return v || [];
+  const result = v || [];
+  cacheSet('index', result);
+  return result;
 }
 async function saveIndex(list){
+  cacheSet('index', list);
   const ok = await dbSet('index', list);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
 async function getStudent(code){
-  return await dbGet('students/'+code);
+  const cached = cacheGet('s_'+code);
+  if(cached) return cached;
+  const v = await dbGet('students/'+code);
+  if(v) cacheSet('s_'+code, v);
+  return v;
 }
 async function saveStudent(code, data){
+  cacheSet('s_'+code, data);
   const ok = await dbSet('students/'+code, data);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
@@ -1049,7 +1108,9 @@ async function renderHome(){
 }
 
 async function openReport(code){
+  showLoading('جاري تحميل بيانات الطالب...');
   const data = await getStudent(code);
+  hideLoading();
   if(!data){ toast(`الكود غير صحيح، تأكد منه مع ${TEACHER.name}`); return; }
   state.code = code; state.student = data; state.view='report';
   history.replaceState(null,'', location.pathname+'?code='+code);
@@ -1432,7 +1493,9 @@ function renderTeacherLogin(){
 }
 
 async function renderTeacherPanel(){
+  showLoading('جاري تحميل لوحة المعلم...');
   state.index = await getIndex();
+  hideLoading();
   const riskyStudents = state.index.filter(s=>s.risk);
   $app.innerHTML = `
     ${brandbar(true)}
@@ -1577,6 +1640,7 @@ async function renderTeacherPanel(){
         </span>
       </div>
       <div style="margin-bottom:12px;">
+        <button class="btn btn-ghost btn-sm" id="clearCacheBtn">🔄 تحديث البيانات (مسح الكاش)</button>
         <button class="btn btn-brass btn-sm" id="exportStudentsExcelBtn">📊 تصدير بيانات الطلاب (Excel)</button>
       </div>
       <div class="form-grid" style="margin-bottom:12px;">
@@ -1688,8 +1752,7 @@ async function renderTeacherPanel(){
     if(!klass){ toast('اختار الفصل الأول'); return; }
     if(!examName){ toast('اكتب اسم الامتحان'); return; }
     const students = state.index.filter(s=>(s.klass||'').trim()===klass);
-    if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
-    const wrap = document.getElementById('quickGradeTableWrap');
+    if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }    const wrap = document.getElementById('quickGradeTableWrap');
     wrap.innerHTML = `
       <div style="overflow-x:auto;">
         <table class="qg-table">
@@ -1805,13 +1868,13 @@ async function renderTeacherPanel(){
     const klass = document.getElementById('payBulkClass').value;
     const defAmount = document.getElementById('payBulkAmount').value||'200';
     const date = document.getElementById('payBulkDate').value;
-    const monthStr = date.substring(0,7); // YYYY-MM
+    const monthStr = date.substring(0,7);
     if(!klass){ toast('اختار الفصل الأول'); return; }
     const students = state.index.filter(s=>(s.klass||'').trim()===klass);
     if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
-
-    // نجيب بيانات الدفع لكل طالب
+    showLoading('جاري تحميل بيانات الدفع...');
     const studentsData = await Promise.all(students.map(s=>getStudent(s.code)));
+    hideLoading();
 
     const wrap = document.getElementById('payBulkTableWrap');
     wrap.innerHTML = `
@@ -2142,6 +2205,15 @@ async function renderTeacherPanel(){
     }
   });
 
+  document.getElementById('clearCacheBtn').addEventListener('click', async ()=>{
+    cacheClear();
+    toast('تم مسح الكاش — جاري إعادة التحميل...');
+    showLoading('جاري تحديث البيانات...');
+    state.index = await getIndex();
+    hideLoading();
+    render();
+  });
+
   document.getElementById('exportStudentsExcelBtn').addEventListener('click', ()=>{
     const idx = state.index||[];
     if(!idx.length){ toast('لا يوجد طلاب لتصديرهم'); return; }
@@ -2322,7 +2394,9 @@ function bindStudentListEvents(){
 
 async function renderStudentEditor(){
   const code = state.editingCode;
+  showLoading('جاري تحميل بيانات الطالب...');
   const s = await getStudent(code);
+  hideLoading();
   if(!s){ toast('الطالب غير موجود'); state.view='teacherPanel'; render(); return; }
 
   const link = location.origin + location.pathname + '?code=' + code;
