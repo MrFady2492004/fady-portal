@@ -1469,7 +1469,22 @@ async function renderTeacherPanel(){
     </div>
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> إرسال واتساب جماعي (أسرع من واحد واحد)</div>
+      <div class="card-title"><span class="dot"></span> 💰 تسجيل دفع الفصل — جدول سريع</div>
+      <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل، هيظهرلك كل طلابه — تقدر تسجل دفع لكل واحد في نفس الوقت.</p>
+      <div class="form-grid" style="margin-bottom:12px;">
+        <div class="field">
+          <label>الفصل</label>
+          <select id="payBulkClass">
+            <option value="">اختار الفصل</option>
+            ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input type="date" id="payBulkDate" value="${new Date().toISOString().split('T')[0]}"></div>
+        <div class="field"><label>المبلغ الافتراضي (جنيه)</label><input type="number" id="payBulkAmount" value="200" min="0"></div>
+      </div>
+      <button class="btn btn-brass btn-sm" id="payBulkLoadBtn">💳 تحميل الطلاب</button>
+      <div id="payBulkTableWrap" style="margin-top:14px;"></div>
+    </div> (أسرع من واحد واحد)</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">اختار نوع الرسالة، ولو حضور أو مصروفات حدد اليوم بالظبط عشان محدش ياخد رسالة مكررة. تقدر كمان تحدد صف معيّن بدل كل الطلاب.</p>
       <div class="form-grid" style="margin-bottom:8px;">
         <div class="field">
@@ -1490,7 +1505,7 @@ async function renderTeacherPanel(){
         </div>
       </div>
       <div id="waBulkDateWrap" class="form-grid" style="margin-bottom:10px;">
-        <div class="field"><label>اليوم</label><input type="date" id="waBulkDate"></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="waBulkDate" value="${new Date().toISOString().split('T')[0]}"></div>
       </div>
       <div id="waBulkCustomWrap" style="display:none;margin-bottom:10px;">
         <div class="field"><label>نص الرسالة (هيتحط بعد اسم الطالب تلقائيًا)</label>
@@ -1735,6 +1750,108 @@ async function renderTeacherPanel(){
       await saveIndex(idx2);
       btn.textContent='✅ تم الحفظ';
       toast(`تم حفظ ${saved} درجة${skipped?' — تم تخطي '+skipped+' فارغة':''}`);
+    });
+  });
+
+  // ===== دفع جماعي =====
+  document.getElementById('payBulkLoadBtn').addEventListener('click', ()=>{
+    const klass = document.getElementById('payBulkClass').value;
+    const defAmount = document.getElementById('payBulkAmount').value||'200';
+    if(!klass){ toast('اختار الفصل الأول'); return; }
+    const students = state.index.filter(s=>(s.klass||'').trim()===klass);
+    if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
+    const wrap = document.getElementById('payBulkTableWrap');
+    wrap.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="qg-table">
+          <thead>
+            <tr>
+              <th style="width:32px;">#</th>
+              <th>اسم الطالب</th>
+              <th style="width:110px;">المبلغ (جنيه)</th>
+              <th style="width:110px;">نوع الدفع</th>
+              <th style="width:80px;">تسجيل</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${students.map((s,i)=>`
+              <tr id="payrow-${s.code}">
+                <td style="color:var(--muted);font-size:12px;">${i+1}</td>
+                <td style="font-weight:600;">${s.name}</td>
+                <td><input class="qg-score-input pay-amount-input" type="number" min="0" value="${defAmount}" data-code="${s.code}" style="width:90px;"></td>
+                <td>
+                  <select class="pay-type-select" data-code="${s.code}" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;font-family:inherit;background:var(--card);color:var(--ink);">
+                    <option value="شهري">شهري</option>
+                    <option value="كتب">كتب</option>
+                    <option value="نشاط">نشاط</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </td>
+                <td>
+                  <button class="btn btn-brass btn-sm pay-single-btn" data-code="${s.code}" style="padding:6px 10px;font-size:12px;">💾</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="qg-save-bar">
+        <button class="btn btn-brass btn-sm" id="payBulkSaveAllBtn">💾 حفظ كل الدفعات</button>
+        <span class="qg-counter">سيتم حفظ <strong>${students.length}</strong> دفعة</span>
+      </div>
+    `;
+
+    // أنيميشن ظهور
+    wrap.querySelectorAll('tbody tr').forEach((r,i)=>{
+      r.style.opacity='0'; r.style.transform='translateY(8px)';
+      setTimeout(()=>{ r.style.transition='all .2s'; r.style.opacity='1'; r.style.transform='none'; }, i*25);
+    });
+
+    // حفظ طالب واحد
+    wrap.querySelectorAll('.pay-single-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const code = btn.dataset.code;
+        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${code}"]`);
+        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${code}"]`);
+        const amount = amountEl.value.trim();
+        const type = typeEl.value;
+        const date = document.getElementById('payBulkDate').value;
+        if(!amount){ toast('ادخل المبلغ'); return; }
+        const st = await getStudent(code);
+        if(!st) return;
+        st.payments = st.payments||[];
+        st.payments.push({amount, type, date, note:''});
+        await saveStudent(code, st);
+        const row = document.getElementById(`payrow-${code}`);
+        if(row){ row.style.background='#E6F2EB'; row.style.opacity='.6'; }
+        btn.textContent='✅'; btn.disabled=true;
+        toast('تم حفظ دفعة '+st.name);
+      });
+    });
+
+    // حفظ الكل
+    document.getElementById('payBulkSaveAllBtn').addEventListener('click', async ()=>{
+      const date = document.getElementById('payBulkDate').value;
+      const saveBtn = document.getElementById('payBulkSaveAllBtn');
+      saveBtn.textContent='⏳ جاري الحفظ...'; saveBtn.disabled=true;
+      let saved=0;
+      for(const s of students){
+        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${s.code}"]`);
+        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${s.code}"]`);
+        if(!amountEl||!typeEl) continue;
+        const amount = amountEl.value.trim();
+        if(!amount) continue;
+        const st = await getStudent(s.code);
+        if(!st) continue;
+        st.payments = st.payments||[];
+        st.payments.push({amount, type:typeEl.value, date, note:''});
+        await saveStudent(s.code, st);
+        const row = document.getElementById(`payrow-${s.code}`);
+        if(row){ row.style.background='#E6F2EB'; row.style.opacity='.6'; }
+        saved++;
+      }
+      saveBtn.textContent='✅ تم الحفظ';
+      toast(`تم حفظ ${saved} دفعة ✅`);
     });
   });
 
@@ -2237,7 +2354,7 @@ async function renderStudentEditor(){
       <div class="card-title"><span class="dot"></span> إضافة درجة امتحان</div>
       <form id="examForm" class="form-grid">
         <div class="field"><label>اسم الامتحان</label><input type="text" id="examName" placeholder="مثال: شهر فبراير" required></div>
-        <div class="field"><label>التاريخ</label><input type="date" id="examDate"></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="examDate" value="${new Date().toISOString().split('T')[0]}"></div>
         <div class="field"><label>الدرجة</label><input type="number" id="examScore" required></div>
         <div class="field"><label>من</label><input type="number" id="examMax" value="100" required></div>
         <button class="btn btn-brass" type="submit">إضافة</button>
@@ -2258,7 +2375,7 @@ async function renderStudentEditor(){
         <div class="field"><label>الحالة</label>
           <select id="payStatus"><option value="paid">مدفوع</option><option value="due">غير مدفوع</option></select>
         </div>
-        <div class="field"><label>التاريخ</label><input type="date" id="payDate"></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="payDate" value="${new Date().toISOString().split('T')[0]}"></div>
         <button class="btn btn-brass" type="submit">تسجيل</button>
       </form>
       <button class="btn btn-ghost btn-sm" id="waPayBtn" style="margin-top:8px;width:100%;">📱 ابعت لولي الأمر واتساب بحالة المصروفات</button>
