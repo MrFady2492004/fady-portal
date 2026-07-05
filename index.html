@@ -280,6 +280,45 @@
   .hero-badge{display:inline-block;padding:5px 16px;border-radius:30px;font-weight:800;font-size:13px;background:var(--brass);color:#fff;}
   .hero-greeting{font-size:13px;opacity:.8;margin-bottom:8px;font-style:italic;}
 
+  /* ===== شريط التنقل بين الطلاب ===== */
+  .student-nav-bar{
+    background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;margin-bottom:14px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .student-nav-arrows{display:flex;align-items:center;gap:8px;}
+  .student-nav-arrows .nav-btn{
+    display:flex;align-items:center;gap:6px;
+    padding:8px 14px;border-radius:30px;border:1.5px solid var(--line);
+    background:var(--paper2);color:var(--ink);font-family:'Cairo',sans-serif;
+    font-weight:700;font-size:13px;cursor:pointer;transition:all .18s;flex:1;justify-content:center;
+  }
+  .student-nav-arrows .nav-btn:hover{border-color:var(--brass);color:var(--brass);background:var(--paper);}
+  .student-nav-arrows .nav-btn:disabled{opacity:.35;cursor:not-allowed;}
+  .student-nav-counter{
+    flex:none;text-align:center;font-size:13px;font-weight:700;
+    color:var(--muted);min-width:70px;white-space:nowrap;
+  }
+  .student-nav-search{position:relative;}
+  .student-nav-search input{
+    width:100%;padding:9px 14px 9px 36px;border-radius:8px;
+    border:1.5px solid var(--line);background:var(--paper2);
+    font-size:13.5px;font-family:inherit;color:var(--ink);
+    transition:border .2s;box-sizing:border-box;
+  }
+  .student-nav-search input:focus{outline:none;border-color:var(--brass);}
+  .student-nav-search .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;}
+  .student-nav-results{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;
+    background:var(--card);border:1.5px solid var(--line);border-radius:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;display:none;
+  }
+  .student-nav-results.open{display:block;}
+  .snr-item{padding:10px 14px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .snr-item:last-child{border-bottom:none;}
+  .snr-item:hover{background:var(--paper2);}
+  .snr-item .snr-klass{font-size:11px;color:var(--muted);}
+
   /* ===== شريط التواصل الثابت ===== */
   .contact-bar{
     position:fixed;bottom:0;left:0;right:0;z-index:900;
@@ -298,6 +337,7 @@
     flex:1;max-width:140px;justify-content:center;
   }
   .contact-bar a:hover{transform:translateY(-2px);}
+  .contact-bar .cb-fb{background:#1877F2;}
   .contact-bar .cb-call{background:#25D366;}
   .contact-bar .cb-wa{background:#128C7E;}
   .contact-bar .cb-yt{background:#FF0000;}
@@ -383,7 +423,8 @@ const TEACHER = {
   links: {                // لينكات صفحاتك (سيبها فاضية '' لو عايز تخفي أي واحدة)
     youtube: 'https://www.youtube.com/@Mr_Fady_Farah',
     telegram: 'https://t.me/mrfadyfarah',
-    platform: 'https://mr-fady.academodo.com/'
+    platform: 'https://mr-fady.academodo.com/',
+    facebook: 'https://www.facebook.com/profile.php?id=61579430768693'
   }
 };
 /* عاوز تغيّر الصورة؟ ابعتلي الصورة الجديدة وهعمل تضمين base64 جديد بنفس الطريقة */
@@ -487,6 +528,10 @@ function buildContactBar(){
     ${yt?`<a class="cb-yt" href="${yt}" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
       يوتيوب
+    </a>`:''}
+    ${(T.links&&T.links.facebook)?`<a class="cb-fb" href="${T.links.facebook}" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07z"/></svg>
+      فيسبوك
     </a>`:''}
     ${tg?`<a class="cb-tg" href="${tg}" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
@@ -941,7 +986,9 @@ function socialLinksHTML(){
     { key:'telegram', url:l.telegram, label:'تيليجرام',
       icon:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.6 20c-.2 1-.9 1.3-1.7.8l-4.8-3.6-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9L18 6.7c.4-.4-.1-.6-.6-.2L7.5 13l-4.8-1.5c-1-.3-1-1 .2-1.5L20.6 3c.9-.3 1.7.2 1.3 1.3Z"/></svg>` },
     { key:'platform', url:l.platform, label:'المنصة',
-      icon:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="M2 16l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>` }
+      icon:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="M2 16l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>` },
+    { key:'facebook', url:l.facebook, label:'فيسبوك',
+      icon:`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07z"/></svg>` }
   ].filter(i => i.url);
   if(!items.length) return '';
   return `
@@ -1754,12 +1801,18 @@ async function renderTeacherPanel(){
   });
 
   // ===== دفع جماعي =====
-  document.getElementById('payBulkLoadBtn').addEventListener('click', ()=>{
+  document.getElementById('payBulkLoadBtn').addEventListener('click', async ()=>{
     const klass = document.getElementById('payBulkClass').value;
     const defAmount = document.getElementById('payBulkAmount').value||'200';
+    const date = document.getElementById('payBulkDate').value;
+    const monthStr = date.substring(0,7); // YYYY-MM
     if(!klass){ toast('اختار الفصل الأول'); return; }
     const students = state.index.filter(s=>(s.klass||'').trim()===klass);
     if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
+
+    // نجيب بيانات الدفع لكل طالب
+    const studentsData = await Promise.all(students.map(s=>getStudent(s.code)));
+
     const wrap = document.getElementById('payBulkTableWrap');
     wrap.innerHTML = `
       <div style="overflow-x:auto;">
@@ -1768,70 +1821,82 @@ async function renderTeacherPanel(){
             <tr>
               <th style="width:32px;">#</th>
               <th>اسم الطالب</th>
-              <th style="width:110px;">المبلغ (جنيه)</th>
-              <th style="width:110px;">نوع الدفع</th>
-              <th style="width:80px;">تسجيل</th>
+              <th style="width:90px;">دفع الشهر ده</th>
+              <th style="width:80px;">المطلوب</th>
+              <th style="width:80px;">المتبقي</th>
+              <th style="width:100px;">مبلغ جديد</th>
+              <th style="width:90px;">نوع الدفع</th>
+              <th style="width:60px;">حفظ</th>
             </tr>
           </thead>
           <tbody>
-            ${students.map((s,i)=>`
-              <tr id="payrow-${s.code}">
+            ${students.map((s,i)=>{
+              const st = studentsData[i];
+              const paid = (st&&st.payments||[])
+                .filter(p=> (p.date||'').substring(0,7)===monthStr)
+                .reduce((sum,p)=>sum+Number(p.amount||0), 0);
+              const required = Number(defAmount);
+              const remaining = Math.max(0, required - paid);
+              const done = remaining === 0;
+              return `<tr id="payrow-${s.code}" style="${done?'opacity:.5;':''}">
                 <td style="color:var(--muted);font-size:12px;">${i+1}</td>
                 <td style="font-weight:600;">${s.name}</td>
-                <td><input class="qg-score-input pay-amount-input" type="number" min="0" value="${defAmount}" data-code="${s.code}" style="width:90px;"></td>
-                <td>
-                  <select class="pay-type-select" data-code="${s.code}" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;font-family:inherit;background:var(--card);color:var(--ink);">
-                    <option value="شهري">شهري</option>
-                    <option value="كتب">كتب</option>
-                    <option value="نشاط">نشاط</option>
-                    <option value="أخرى">أخرى</option>
-                  </select>
-                </td>
-                <td>
-                  <button class="btn btn-brass btn-sm pay-single-btn" data-code="${s.code}" style="padding:6px 10px;font-size:12px;">💾</button>
-                </td>
-              </tr>
-            `).join('')}
+                <td style="color:${paid>0?'var(--good)':'var(--muted)'};font-weight:700;">${paid > 0 ? paid+' ج' : '—'}</td>
+                <td style="color:var(--muted);">${required} ج</td>
+                <td style="color:${done?'var(--good)':'var(--warn)'};font-weight:700;">${done?'✅ خلّص':remaining+' ج'}</td>
+                <td>${done?'<span style="font-size:12px;color:var(--good);">مكتمل</span>':`<input class="qg-score-input pay-amount-input" type="number" min="0" value="${remaining}" data-code="${s.code}" style="width:75px;">`}</td>
+                <td>${done?'—':`<select class="pay-type-select" data-code="${s.code}" style="padding:5px 6px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;font-family:inherit;background:var(--card);color:var(--ink);">
+                  <option value="شهري">شهري</option>
+                  <option value="كتب">كتب</option>
+                  <option value="نشاط">نشاط</option>
+                  <option value="أخرى">أخرى</option>
+                </select>`}</td>
+                <td>${done?'—':`<button class="btn btn-brass btn-sm pay-single-btn" data-code="${s.code}" style="padding:5px 8px;font-size:12px;">💾</button>`}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
       <div class="qg-save-bar">
-        <button class="btn btn-brass btn-sm" id="payBulkSaveAllBtn">💾 حفظ كل الدفعات</button>
-        <span class="qg-counter">سيتم حفظ <strong>${students.length}</strong> دفعة</span>
+        <button class="btn btn-brass btn-sm" id="payBulkSaveAllBtn">💾 حفظ الكل (اللي ناقصين بس)</button>
+        <span class="qg-counter">
+          <strong style="color:var(--good);">${students.filter((_,i)=>{
+            const st=studentsData[i]; const paid=(st&&st.payments||[]).filter(p=>(p.date||'').substring(0,7)===monthStr).reduce((s,p)=>s+Number(p.amount||0),0);
+            return paid>=Number(defAmount);
+          }).length}</strong> خلّصوا &nbsp;|&nbsp;
+          <strong style="color:var(--warn);">${students.filter((_,i)=>{
+            const st=studentsData[i]; const paid=(st&&st.payments||[]).filter(p=>(p.date||'').substring(0,7)===monthStr).reduce((s,p)=>s+Number(p.amount||0),0);
+            return paid<Number(defAmount);
+          }).length}</strong> لسه
+        </span>
       </div>
     `;
 
-    // أنيميشن ظهور
     wrap.querySelectorAll('tbody tr').forEach((r,i)=>{
-      r.style.opacity='0'; r.style.transform='translateY(8px)';
-      setTimeout(()=>{ r.style.transition='all .2s'; r.style.opacity='1'; r.style.transform='none'; }, i*25);
+      r.style.opacity=r.style.opacity||'0'; r.style.transform='translateY(8px)';
+      setTimeout(()=>{ r.style.transition='all .2s'; r.style.opacity=r.dataset.done?'.5':'1'; r.style.transform='none'; }, i*25);
     });
 
-    // حفظ طالب واحد
     wrap.querySelectorAll('.pay-single-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const code = btn.dataset.code;
-        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${code}"]`);
-        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${code}"]`);
-        const amount = amountEl.value.trim();
-        const type = typeEl.value;
-        const date = document.getElementById('payBulkDate').value;
-        if(!amount){ toast('ادخل المبلغ'); return; }
-        const st = await getStudent(code);
+        const code2 = btn.dataset.code;
+        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${code2}"]`);
+        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${code2}"]`);
+        const amount = amountEl?.value.trim();
+        if(!amount||amount==='0'){ toast('ادخل مبلغ'); return; }
+        const st = await getStudent(code2);
         if(!st) return;
         st.payments = st.payments||[];
-        st.payments.push({amount, type, date, note:''});
-        await saveStudent(code, st);
-        const row = document.getElementById(`payrow-${code}`);
+        st.payments.push({amount, type:typeEl?.value||'شهري', date, note:''});
+        await saveStudent(code2, st);
+        const row = document.getElementById(`payrow-${code2}`);
         if(row){ row.style.background='#E6F2EB'; row.style.opacity='.6'; }
         btn.textContent='✅'; btn.disabled=true;
-        toast('تم حفظ دفعة '+st.name);
+        toast('تم حفظ دفعة '+( state.index.find(x=>x.code===code2)?.name||''));
       });
     });
 
-    // حفظ الكل
     document.getElementById('payBulkSaveAllBtn').addEventListener('click', async ()=>{
-      const date = document.getElementById('payBulkDate').value;
       const saveBtn = document.getElementById('payBulkSaveAllBtn');
       saveBtn.textContent='⏳ جاري الحفظ...'; saveBtn.disabled=true;
       let saved=0;
@@ -1840,7 +1905,7 @@ async function renderTeacherPanel(){
         const typeEl = wrap.querySelector(`.pay-type-select[data-code="${s.code}"]`);
         if(!amountEl||!typeEl) continue;
         const amount = amountEl.value.trim();
-        if(!amount) continue;
+        if(!amount||amount==='0') continue;
         const st = await getStudent(s.code);
         if(!st) continue;
         st.payments = st.payments||[];
@@ -2263,11 +2328,36 @@ async function renderStudentEditor(){
   const link = location.origin + location.pathname + '?code=' + code;
   const risk = riskStatus(s);
 
+  // حساب موقع الطالب في القايمة
+  const idx = state.index||[];
+  const currentPos = idx.findIndex(x=>x.code===code);
+  const total = idx.length;
+  const prevCode = currentPos > 0 ? idx[currentPos-1].code : null;
+  const nextCode = currentPos < total-1 ? idx[currentPos+1].code : null;
+
   $app.innerHTML = `
     ${brandbar(true)}
     <div class="topnav">
       <div class="back" id="toPanel">→ كل الطلاب</div>
       <strong style="font-size:14px;">${s.name} · ${s.klass||'—'}</strong>
+    </div>
+
+    <!-- شريط التنقل -->
+    <div class="student-nav-bar">
+      <div class="student-nav-arrows">
+        <button class="nav-btn" id="navPrevBtn" ${!prevCode?'disabled':''}>
+          ← السابق
+        </button>
+        <span class="student-nav-counter">${currentPos+1} / ${total}</span>
+        <button class="nav-btn" id="navNextBtn" ${!nextCode?'disabled':''}>
+          التالي →
+        </button>
+      </div>
+      <div class="student-nav-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="studentNavSearch" placeholder="ابحث عن طالب بالاسم..." autocomplete="off">
+        <div class="student-nav-results" id="studentNavResults"></div>
+      </div>
     </div>
 
     ${ risk.atRisk ? `
@@ -2283,6 +2373,7 @@ async function renderStudentEditor(){
         <div class="field"><label>اسم الطالب</label><input type="text" id="editStudentName" value="${(s.name||'').replace(/"/g,'&quot;')}" required></div>
         <div class="field"><label>الصف</label><input type="text" id="editStudentClass" list="classDatalist2" value="${(s.klass||'').replace(/"/g,'&quot;')}" placeholder="مثال: رابعة ابتدائي"></div>
         <datalist id="classDatalist2">${CLASS_LEVELS.map(c=>`<option value="${c}">`).join('')}</datalist>
+        <div class="field"><label>تاريخ الميلاد</label><input type="date" id="editStudentBirthdate" value="${s.birthdate||''}"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ التعديل</button>
       </form>
     </div>
@@ -2392,17 +2483,62 @@ async function renderStudentEditor(){
 
   document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
 
+  // التنقل بالأسهم
+  const prevBtn = document.getElementById('navPrevBtn');
+  const nextBtn = document.getElementById('navNextBtn');
+  if(prevBtn && !prevBtn.disabled) prevBtn.addEventListener('click', ()=>{ state.editingCode=prevCode; renderStudentEditor(); });
+  if(nextBtn && !nextBtn.disabled) nextBtn.addEventListener('click', ()=>{ state.editingCode=nextCode; renderStudentEditor(); });
+
+  // اختصارات لوحة المفاتيح
+  document.addEventListener('keydown', function navKeys(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+    if(e.key==='ArrowLeft'&&prevCode){ state.editingCode=prevCode; renderStudentEditor(); document.removeEventListener('keydown',navKeys); }
+    if(e.key==='ArrowRight'&&nextCode){ state.editingCode=nextCode; renderStudentEditor(); document.removeEventListener('keydown',navKeys); }
+  });
+
+  // البحث السريع
+  const searchInput = document.getElementById('studentNavSearch');
+  const searchResults = document.getElementById('studentNavResults');
+  searchInput.addEventListener('input', ()=>{
+    const q = searchInput.value.trim();
+    if(!q){ searchResults.classList.remove('open'); return; }
+    const matches = (state.index||[]).filter(x=>(x.name||'').includes(q)||(x.code||'').toUpperCase().includes(q.toUpperCase())).slice(0,8);
+    if(!matches.length){ searchResults.innerHTML='<div class="snr-item" style="color:var(--muted);">لا توجد نتائج</div>'; searchResults.classList.add('open'); return; }
+    searchResults.innerHTML = matches.map(m=>`
+      <div class="snr-item" data-code="${m.code}">
+        <span>${m.name}</span>
+        <span class="snr-klass">${m.klass||''}</span>
+      </div>
+    `).join('');
+    searchResults.classList.add('open');
+    searchResults.querySelectorAll('.snr-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        state.editingCode = item.dataset.code;
+        searchResults.classList.remove('open');
+        renderStudentEditor();
+      });
+    });
+  });
+  // إخفاء النتائج لما يضغط برا
+  document.addEventListener('click', function hideResults(e){
+    if(!searchResults.contains(e.target)&&e.target!==searchInput){
+      searchResults.classList.remove('open');
+      document.removeEventListener('click', hideResults);
+    }
+  });
+
   document.getElementById('editInfoForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const newName = document.getElementById('editStudentName').value.trim();
     const newClass = document.getElementById('editStudentClass').value.trim();
+    const newBirthdate = document.getElementById('editStudentBirthdate').value;
     if(!newName){ toast('اكتب اسم الطالب'); return; }
-    s.name = newName; s.klass = newClass;
+    s.name = newName; s.klass = newClass; s.birthdate = newBirthdate;
     await saveStudent(code, s);
     const idx = await getIndex();
     const entry = idx.find(x=>x.code===code);
-    if(entry){ entry.name = newName; entry.klass = newClass; await saveIndex(idx); }
-    toast('تم حفظ بيانات الطالب');
+    if(entry){ entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate; await saveIndex(idx); }
+    toast('تم حفظ بيانات الطالب ✅');
     renderStudentEditor();
   });
   document.getElementById('copyLink').addEventListener('click', async ()=>{
