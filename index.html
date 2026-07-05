@@ -1696,25 +1696,35 @@ async function renderTeacherPanel(){
     const klass = document.getElementById('newClass').value.trim();
     const manualCode = document.getElementById('newCode').value.trim().toUpperCase();
     if(!name) return;
+    showLoading('جاري إضافة الطالب...');
+    // دايماً نجيب أحدث نسخة من Firebase مش من الكاش
+    cacheDelete('index');
     const idx = await getIndex();
     let code;
     if(manualCode){
-      if(idx.find(x=>x.code===manualCode)){ toast('الكود ده مستخدم قبل كده — اختار كود تاني'); return; }
+      if(idx.find(x=>x.code===manualCode)){ hideLoading(); toast('الكود ده مستخدم قبل كده — اختار كود تاني'); return; }
       code = manualCode;
     } else {
       code = genCode();
       while(idx.find(x=>x.code===code)) code = genCode();
     }
     idx.push({name, klass, code});
-    await saveIndex(idx);
     await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
-    toast('تم إضافة الطالب — الكود: '+code);
+    await saveIndex(idx);
+    state.index = idx;
+    hideLoading();
+    toast('✅ تم إضافة الطالب — الكود: '+code);
+    document.getElementById('newName').value='';
+    document.getElementById('newCode').value='';
     renderTeacherPanel();
   });
   document.getElementById('bulkStudentsBtn').addEventListener('click', async ()=>{
     const raw = document.getElementById('bulkStudents').value;
     const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
     if(!lines.length){ toast('الصق بيانات الطلاب الأول'); return; }
+    showLoading('جاري استيراد الطلاب...');
+    // دايماً نجيب أحدث نسخة من Firebase
+    cacheDelete('index');
     const idx = await getIndex();
     let added=0, skipped=0;
     for(const line of lines){
@@ -1739,7 +1749,10 @@ async function renderTeacherPanel(){
       added++;
     }
     await saveIndex(idx);
-    toast(`تم إضافة ${added} طالب${skipped? ' — وتم تخطي '+skipped+' (كود مكرر)':''}`);
+    state.index = idx;
+    hideLoading();
+    toast(`✅ تم إضافة ${added} طالب${skipped? ' — وتم تخطي '+skipped+' (كود مكرر)':''}`);
+    document.getElementById('bulkStudents').value='';
     renderTeacherPanel();
   });
 
