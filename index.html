@@ -232,6 +232,15 @@
   .seg-btn.active[data-status="present"]{background:var(--good-bg);color:var(--good);border-color:var(--good);}
   .seg-btn.active[data-status="absent"]{background:var(--warn-bg);color:var(--warn);border-color:var(--warn);}
 
+  /* ===== مؤشر الاتصال ===== */
+  #offlineBanner{
+    position:fixed;top:0;left:0;right:0;z-index:9998;
+    background:#dc3545;color:#fff;
+    text-align:center;padding:8px;font-family:'Cairo',sans-serif;
+    font-weight:700;font-size:13px;display:none;
+  }
+  #offlineBanner.show{display:block;}
+
   /* ===== Loading Overlay ===== */
   #loadingOverlay{
     position:fixed;inset:0;z-index:9999;
@@ -427,6 +436,7 @@
 </head>
 <body>
 <div id="bgfx"></div>
+<div id="offlineBanner">⚠️ النت ضعيف أو منقطع — البيانات محفوظة محلياً ولن تُفقد</div>
 <div id="loadingOverlay">
   <div class="loading-spinner"></div>
   <div class="loading-msg" id="loadingMsg">جاري التحميل...</div>
@@ -579,6 +589,12 @@ const $loadingMsg = document.getElementById('loadingMsg');
 function showLoading(msg){ $loadingMsg.textContent = msg||'جاري التحميل...'; $loading.classList.add('show'); }
 function hideLoading(){ $loading.classList.remove('show'); }
 
+/* ===== مراقبة الاتصال ===== */
+const $offlineBanner = document.getElementById('offlineBanner');
+window.addEventListener('online',  ()=>{ $offlineBanner.classList.remove('show'); toast('✅ تم استعادة الاتصال بالإنترنت'); });
+window.addEventListener('offline', ()=>{ $offlineBanner.classList.add('show'); });
+if(!navigator.onLine) $offlineBanner.classList.add('show');
+
 /* ===== Cache (localStorage) ===== */
 const CACHE_TTL = 5 * 60 * 1000; // 5 دقايق
 const CACHE_PREFIX = 'fady_portal_';
@@ -602,7 +618,10 @@ function cacheClear(){ try{ Object.keys(localStorage).filter(k=>k.startsWith(CAC
 
 async function dbGet(path){
   try{
-    const r = await fetch(DB_URL + '/' + path + '.json');
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 8000); // 8 ثواني max
+    const r = await fetch(DB_URL + '/' + path + '.json', {signal: controller.signal});
+    clearTimeout(timeout);
     if(!r.ok) return null;
     return await r.json();
   }catch(e){ return null; }
@@ -624,25 +643,47 @@ async function dbDelete(path){
 
 async function getIndex(){
   const cached = cacheGet('index');
-  if(cached) return cached;
-  const v = await dbGet('index');
-  const result = v || [];
-  cacheSet('index', result);
-  return result;
+  try{
+    const v = await dbGet('index');
+    // لو Firebase رجع null أو array فاضي، استخدم الكاش لو موجود
+    if(!v || (Array.isArray(v) && v.length === 0 && cached && cached.length > 0)){
+      return cached || [];
+    }
+    cacheSet('index', v);
+    return v;
+  }catch(e){
+    // لو في مشكلة في النت، استخدم الكاش
+    return cached || [];
+  }
 }
 async function saveIndex(list){
+  // حماية: مش نحفظ list فاضية لو عندنا بيانات في الكاش
+  const cached = cacheGet('index');
+  if((!list || list.length === 0) && cached && cached.length > 0){
+    toast('⚠️ تم إلغاء الحفظ — البيانات المراد حفظها فاضية!');
+    return;
+  }
   cacheSet('index', list);
   const ok = await dbSet('index', list);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
 }
 async function getStudent(code){
   const cached = cacheGet('s_'+code);
-  if(cached) return cached;
-  const v = await dbGet('students/'+code);
-  if(v) cacheSet('s_'+code, v);
-  return v;
+  try{
+    const v = await dbGet('students/'+code);
+    if(!v){ return cached || null; }
+    cacheSet('s_'+code, v);
+    return v;
+  }catch(e){
+    return cached || null;
+  }
 }
 async function saveStudent(code, data){
+  // حماية: مش نحفظ بيانات فاضية
+  if(!data || typeof data !== 'object'){
+    toast('⚠️ تم إلغاء الحفظ — بيانات غير صحيحة!');
+    return;
+  }
   cacheSet('s_'+code, data);
   const ok = await dbSet('students/'+code, data);
   if(!ok) toast('حصل خطأ في الحفظ — اتأكد من اتصال الإنترنت');
@@ -2764,7 +2805,20 @@ async function renderStudentEditor(){
   });
 }
 
+function saveSession(){
+  try{
+    sessionStorage.setItem('fady_session', JSON.stringify({
+      view: state.view,
+      teacherAuthed: state.teacherAuthed,
+      editingCode: state.editingCode,
+      studentSearch: state.studentSearch,
+      classFilter: state.classFilter
+    }));
+  }catch(e){}
+}
+
 function render(){
+  saveSession();
   if(state.view==='home'){ removeContactBar(); applySeasonTheme(); renderHome(); }
   else if(state.view==='report'){ renderReport(); buildContactBar(); }
   else if(state.view==='teacherLogin'){ removeContactBar(); document.body.classList.remove('season-ramadan','season-christmas','season-summer','season-winter'); document.querySelectorAll('.ramadan-deco,.snowflake').forEach(el=>el.remove()); renderTeacherLogin(); }
@@ -2777,8 +2831,27 @@ function render(){
   buildBgFx();
   const params = new URLSearchParams(location.search);
   const codeParam = params.get('code');
-  if(codeParam){ await openReport(codeParam.toUpperCase()); }
-  else render();
+  if(codeParam){
+    await openReport(codeParam.toUpperCase());
+    return;
+  }
+  // استرجاع جلسة المعلم لو كان في لوحة التحكم
+  try{
+    const saved = sessionStorage.getItem('fady_session');
+    if(saved){
+      const sess = JSON.parse(saved);
+      if(sess.teacherAuthed && (sess.view==='teacherPanel'||sess.view==='studentEditor')){
+        state.teacherAuthed = true;
+        state.view = sess.view;
+        state.editingCode = sess.editingCode||null;
+        state.studentSearch = sess.studentSearch||'';
+        state.classFilter = sess.classFilter||'';
+        render();
+        return;
+      }
+    }
+  }catch(e){}
+  render();
 })();
 </script>
 </body>
