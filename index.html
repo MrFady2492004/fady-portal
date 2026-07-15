@@ -1099,28 +1099,14 @@ function socialLinksHTML(){
 }
 
 /* ---------------- Views ---------------- */
-async function renderHome(){
-  const idx = await getIndex();
-  const top10 = idx
+function topStudentsHTML(idx){
+  const top10 = (idx||[])
     .filter(s=> (s.points||0) > 0)
     .slice()
     .sort((a,b)=> (b.points||0) - (a.points||0))
     .slice(0,10);
-
-  $app.innerHTML = `
-    ${brandbar(false)}
-    ${socialLinksHTML()}
-    <div class="hero">
-      <div class="eyebrow">بوابة أولياء الأمور</div>
-      <h1>اطمئن على مستوى ابنك أول بأول</h1>
-      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات.</p>
-      <form class="code-form" id="codeForm">
-        <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
-        <button class="btn btn-brass" type="submit">عرض الكشف</button>
-      </form>
-      <div class="hint">الكود بيتسلّم من ${TEACHER.name} لكل طالب على حدة (5 حروف/أرقام)</div>
-    </div>
-    ${ top10.length ? `
+  if(!top10.length) return '';
+  return `
     <div class="card">
       <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار في السنتر</div>
       ${top10.map((s,i)=>`
@@ -1137,7 +1123,25 @@ async function renderHome(){
         </div>
       `).join('')}
     </div>
-    ` : '' }
+  `;
+}
+
+async function renderHome(){
+  // نعرض الصفحة فورًا من غير ما ننتظر الشبكة
+  $app.innerHTML = `
+    ${brandbar(false)}
+    ${socialLinksHTML()}
+    <div class="hero">
+      <div class="eyebrow">بوابة أولياء الأمور</div>
+      <h1>اطمئن على مستوى ابنك أول بأول</h1>
+      <p>أدخل الكود الخاص بالطالب اللي معاك علشان تشوف الحضور والغياب، درجات الامتحانات.</p>
+      <form class="code-form" id="codeForm">
+        <input type="text" id="codeInput" placeholder="ادخل الكود" maxlength="6" autocomplete="off">
+        <button class="btn btn-brass" type="submit">عرض الكشف</button>
+      </form>
+      <div class="hint">الكود بيتسلّم من ${TEACHER.name} لكل طالب على حدة (5 حروف/أرقام)</div>
+    </div>
+    <div id="topStudentsSlot"></div>
     <div class="footer-link" id="teacherLink">مستر فادي فرح</div>
   `;
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
@@ -1147,6 +1151,16 @@ async function renderHome(){
     await openReport(v);
   });
   document.getElementById('teacherLink').addEventListener('click', ()=>{ state.view='teacherLogin'; render(); });
+
+  // لوحة الشرف بتتحمّل في الخلفية وتتحقن لما تجهز، من غير ما توقف عرض الصفحة
+  const topSlot = document.getElementById('topStudentsSlot');
+  const cached = cacheGet('index');
+  if(cached && cached.length && topSlot){
+    topSlot.innerHTML = topStudentsHTML(cached);
+  }
+  const idx = await getIndex();
+  const currentSlot = document.getElementById('topStudentsSlot');
+  if(currentSlot){ currentSlot.innerHTML = topStudentsHTML(idx); }
 }
 
 async function openReport(code){
