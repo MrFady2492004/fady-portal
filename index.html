@@ -8,7 +8,7 @@
 <!-- Open Graph للمشاركة على واتساب وفيسبوك -->
 <meta property="og:title" content="كشف الطالب — مستر فادي فرح">
 <meta property="og:description" content="متابعة الحضور والدرجات والمصروفات — مدرس الدراسات الاجتماعية">
-<meta property="og:image" content="images/og-image.jpg">
+<meta property="og:image" content="og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="كشف الطالب — مستر فادي فرح">
 <meta name="twitter:description" content="متابعة الحضور والدرجات — مدرس الدراسات الاجتماعية">
-<meta name="twitter:image" content="images/og-image.jpg">
+<meta name="twitter:image" content="og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -450,7 +450,7 @@
 const TEACHER = {
   name: 'مستر فادي',
   subject: 'مدرس الدراسات الاجتماعية',
-  photo: 'images/teacher-photo.jpg', // الصورة بقت ملف منفصل في مجلد images (كانت متضمّنة base64 وده اللي كان بيبطّئ الموقع)
+  photo: 'teacher-photo.jpg', // الصورة بقت ملف منفصل في مجلد images (كانت متضمّنة base64 وده اللي كان بيبطّئ الموقع)
   pin: '3137',           // كود دخول لوحة المعلم — غيّره لرقم سري تعرفه أنت فقط
   phone: '01280051285',  // رقمك اللي هيظهر في البانل العلوي
   links: {                // لينكات صفحاتك (سيبها فاضية '' لو عايز تخفي أي واحدة)
@@ -1011,7 +1011,7 @@ function showCertificate(s){
       <button class="btn btn-ghost btn-sm" id="certCloseBtn">إغلاق ✕</button>
     </div>
     <div class="cert-paper">
-      <img class="cert-bg" src="images/certificate-bg.jpg" alt="شهادة تقدير" loading="lazy">
+      <img class="cert-bg" src="certificate-bg.jpg" alt="شهادة تقدير" loading="lazy">
       <div class="cert-name-overlay">${s.name||''}</div>
     </div>
   `;
