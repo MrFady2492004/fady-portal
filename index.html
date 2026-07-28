@@ -504,6 +504,18 @@ function compressImageFile(file, maxDim, quality){
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
+
+/* رسالة التأكيد اللي بتظهر تحت الشاشة بعد أي عملية (حفظ، حذف، خطأ...).
+   ملحوظة: الدالة دي كانت غير موجودة خالص في الكود الأصلي، فأي نداء عليها كان بيوقّف
+   تنفيذ باقي الكود اللي بعدها (زي تحديث الشاشة بعد الحفظ) من غير ما يظهر أي خطأ واضح للمستخدم. */
+let toastTimer = null;
+function toast(msg){
+  if(!$toast) return;
+  $toast.textContent = msg;
+  $toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ $toast.classList.remove('show'); }, 2600);
+}
 function getSeasonInfo(){
   const now = new Date();
   const m = now.getMonth()+1, d = now.getDate();
@@ -2843,6 +2855,7 @@ async function renderStudentEditor(){
     const indexEntry = idx.find(x=>x.code===code);
     idx = idx.filter(x=>x.code!==code);
     await saveIndex(idx);
+    state.index = idx;
     await moveStudentToTrash(code, s, indexEntry);
     await dbDelete('students/'+code);
     toast('تم نقل الطالب لسلة المحذوفات — تقدر تسترجعه من لوحة المعلم');
