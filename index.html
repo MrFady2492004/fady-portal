@@ -1591,10 +1591,12 @@ function renderTeacherLogin(){
   });
 }
 
-async function renderTeacherPanel(){
-  showLoading('جاري تحميل لوحة المعلم...');
-  state.index = await getIndex();
-  hideLoading();
+async function renderTeacherPanel(skipFetch){
+  if(!skipFetch){
+    showLoading('جاري تحميل لوحة المعلم...');
+    state.index = await getIndex();
+    hideLoading();
+  }
   const riskyStudents = state.index.filter(s=>s.risk);
   $app.innerHTML = `
     ${brandbar(true)}
@@ -1796,9 +1798,9 @@ async function renderTeacherPanel(){
     const manualCode = document.getElementById('newCode').value.trim().toUpperCase();
     if(!name) return;
     showLoading('جاري إضافة الطالب...');
-    // دايماً نجيب أحدث نسخة من Firebase مش من الكاش
-    cacheDelete('index');
-    const idx = await getIndex();
+    // بنستخدم النسخة المحمّلة بالفعل في الذاكرة بدل ما نطلب كل بيانات الطلاب
+    // (بما فيها كل الصور) من السيرفر من جديد في كل مرة — ده كان بيبطّئ الإضافة أوي
+    const idx = state.index.slice();
     let code;
     if(manualCode){
       if(idx.find(x=>x.code===manualCode)){ hideLoading(); toast('الكود ده مستخدم قبل كده — اختار كود تاني'); return; }
@@ -1808,14 +1810,16 @@ async function renderTeacherPanel(){
       while(idx.find(x=>x.code===code)) code = genCode();
     }
     idx.push({name, klass, code});
-    await saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]});
-    await saveIndex(idx);
+    await Promise.all([
+      saveStudent(code, {name, klass, attendance:[], exams:[], payments:[]}),
+      saveIndex(idx)
+    ]);
     state.index = idx;
     hideLoading();
     toast('✅ تم إضافة الطالب — الكود: '+code);
     document.getElementById('newName').value='';
     document.getElementById('newCode').value='';
-    renderTeacherPanel();
+    renderTeacherPanel(true);
   });
   document.getElementById('bulkStudentsBtn').addEventListener('click', async ()=>{
     const raw = document.getElementById('bulkStudents').value;
@@ -1852,9 +1856,8 @@ async function renderTeacherPanel(){
     hideLoading();
     toast(`✅ تم إضافة ${added} طالب${skipped? ' — وتم تخطي '+skipped+' (كود مكرر)':''}`);
     document.getElementById('bulkStudents').value='';
-    renderTeacherPanel();
+    renderTeacherPanel(true);
   });
-
 
   // ===== جدول الدرجات السريع =====
   document.getElementById('quickGradeLoadBtn').addEventListener('click', ()=>{
