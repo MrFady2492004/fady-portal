@@ -2790,6 +2790,7 @@ async function renderStudentEditor(){
     s.attendance = s.attendance||[]; s.attendance.push({date,status});
     addLog(s, `سجّل حضور يوم ${fmtDate(date)} — ${status==='present'?'حاضر':'غائب'}`);
     await saveStudent(code, s); await syncStudentRisk(code, s);
+    toast('✅ تم تسجيل الحضور');
     renderStudentEditor();
   });
   document.getElementById('waAttBtn').addEventListener('click', ()=>{
@@ -2812,6 +2813,7 @@ async function renderStudentEditor(){
     s.exams = s.exams||[]; s.exams.push({name,date,score,max});
     addLog(s, `أضاف درجة ${name}: ${score} من ${max}`);
     await saveStudent(code, s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s);
+    toast('✅ تم حفظ الدرجة');
     renderStudentEditor();
   });
   document.getElementById('waExamBtn').addEventListener('click', ()=>{
@@ -2834,7 +2836,7 @@ async function renderStudentEditor(){
     if(!term||amount==='') return;
     s.payments = s.payments||[]; s.payments.push({term,amount,status,date});
     addLog(s, `سجّل مدفوعات: ${term} — ${amount} جنيه (${status==='paid'?'مدفوع':'غير مدفوع'})`);
-    await saveStudent(code, s); renderStudentEditor();
+    await saveStudent(code, s); toast('✅ تم حفظ المصروفات'); renderStudentEditor();
   });
   document.getElementById('waPayBtn').addEventListener('click', ()=>{
     if(!s.parentPhone){ toast('سجّل رقم ولي الأمر الأول من فوق'); return; }
@@ -2848,13 +2850,13 @@ async function renderStudentEditor(){
     if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
   $app.querySelectorAll('[data-del-att]').forEach(b=>b.addEventListener('click', async ()=>{
-    const delIdx4=Number(b.dataset.delAtt); addLog(s,`حذف سجل حضور يوم ${fmtDate(s.attendance[delIdx4]?.date||'')}`); s.attendance.splice(delIdx4,1); await saveStudent(code,s); await syncStudentRisk(code, s); renderStudentEditor();
+    const delIdx4=Number(b.dataset.delAtt); addLog(s,`حذف سجل حضور يوم ${fmtDate(s.attendance[delIdx4]?.date||'')}`); s.attendance.splice(delIdx4,1); await saveStudent(code,s); await syncStudentRisk(code, s); toast('🗑️ تم حذف سجل الحضور'); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); renderStudentEditor();
+    const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); toast('🗑️ تم حذف الدرجة'); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
-    const delIdx6=Number(b.dataset.delPay); addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); renderStudentEditor();
+    const delIdx6=Number(b.dataset.delPay); addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); toast('🗑️ تم حذف سجل المصروفات'); renderStudentEditor();
   }));
   document.getElementById('delStudent').addEventListener('click', async ()=>{
     if(!confirm('متأكد من حذف الطالب؟ هتقدر تسترجعه بعدين من سلة المحذوفات.')) return;
