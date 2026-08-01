@@ -1670,6 +1670,7 @@ async function renderTeacherPanel(skipFetch){
           <label>الصف</label>
           <select id="attBulkClass">
             <option value="">اختار الصف</option>
+            <option value="__ALL__">كل الطلاب (${state.index.length})</option>
             ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
@@ -2112,7 +2113,7 @@ async function renderTeacherPanel(skipFetch){
   function renderAttBulkList(klass){
     const wrap = document.getElementById('attBulkListWrap');
     if(!klass){ wrap.innerHTML=''; return; }
-    const list = state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
+    const list = klass==='__ALL__' ? state.index.slice() : state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
     if(!list.length){ wrap.innerHTML = `<div class="empty">مفيش طلاب في الصف ده</div>`; return; }
     wrap.innerHTML = list.map(attBulkRowHTML).join('') +
       `<button class="btn btn-brass btn-sm" id="attBulkSaveBtn" style="margin-top:10px;">حفظ حضور الكل (${list.length})</button>`;
@@ -2125,25 +2126,28 @@ async function renderTeacherPanel(skipFetch){
     document.getElementById('attBulkSaveBtn').addEventListener('click', async ()=>{
       const date = document.getElementById('attBulkDate').value;
       if(!date){ toast('اختار التاريخ الأول'); return; }
-      const rows = wrap.querySelectorAll('[data-att-bulk-row]');
-      let count=0;
-      const absentRows = [];
-      for(const row of rows){
+      const rows = [...wrap.querySelectorAll('[data-att-bulk-row]')];
+      showLoading(`جاري حفظ حضور ${rows.length} طالب...`);
+      // بنسجّل كل الطلاب مع بعض في نفس الوقت بدل واحد ورا التاني — ده كان بياخد وقت طويل جدًا
+      // من غير ما يظهر أي مؤشر إن فيه حاجة بتحصل، فكان حاسس إن الحفظ "مش شغال"
+      const results = await Promise.all(rows.map(async (row)=>{
         const code = row.dataset.attBulkRow;
         const activeBtn = row.querySelector('.seg-btn.active');
         const status = activeBtn ? activeBtn.dataset.status : 'present';
         const st = await getStudent(code);
-        if(!st) continue;
+        if(!st) return null;
         st.attendance = st.attendance||[];
         st.attendance.push({date, status});
-        await saveStudent(code, st);
-        await syncStudentRisk(code, st);
-        count++;
+        await Promise.all([ saveStudent(code, st), syncStudentRisk(code, st) ]);
         if(status==='absent' && st.parentPhone){
           const msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${fmtDate(date)}: الطالب كان غايب.\n— ${TEACHER.name}`;
-          absentRows.push({name:st.name, phone:st.parentPhone, msg});
+          return {absent:true, name:st.name, phone:st.parentPhone, msg};
         }
-      }
+        return {absent:false};
+      }));
+      hideLoading();
+      const count = results.filter(Boolean).length;
+      const absentRows = results.filter(r=>r && r.absent);
       toast(`تم تسجيل حضور ${count} طالب ليوم ${fmtDate(date)}`);
       attAbsentRows = absentRows;
       const sendWrap = document.getElementById('attAbsentSendWrap');
