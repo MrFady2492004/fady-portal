@@ -1681,6 +1681,29 @@ async function renderTeacherPanel(skipFetch){
     </div>
 
     <div class="card">
+      <div class="card-title"><span class="dot"></span> 🎡 عجلة الحظ — اختار طالب عشوائي</div>
+      <p class="hint" style="margin:0 0 10px;text-align:right;">اختار الصف ودوس "دور العجلة" — هتختارلك طالب عشوائي يحل السؤال. العجلة بتفتكر مين اتاخد قبل كده في نفس اللفة عشان تدّي فرصة لكل الفصل الأول قبل ما حد ياخد فرصة تانية.</p>
+      <div class="form-grid" style="margin-bottom:12px;">
+        <div class="field">
+          <label>الصف</label>
+          <select id="pickerClass">
+            <option value="">اختار الصف</option>
+            <option value="__ALL__">كل الطلاب (${state.index.length})</option>
+            ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div id="pickerWheel" style="text-align:center;padding:28px 10px;background:var(--paper2);border-radius:12px;border:1.5px dashed var(--line);margin-bottom:12px;transition:transform .08s;">
+        <div class="empty">اختار الصف الأول 👆</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-brass" id="pickerSpinBtn" disabled>🎲 دور العجلة!</button>
+        <button class="btn btn-ghost btn-sm" id="pickerResetBtn" disabled>🔄 لفة جديدة (امسح اللي اتاخدوا)</button>
+      </div>
+      <div id="pickerHistoryWrap" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title"><span class="dot"></span> 💰 تسجيل دفع الفصل — جدول سريع</div>
       <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل، هيظهرلك كل طلابه — تقدر تسجل دفع لكل واحد في نفس الوقت.</p>
       <div class="form-grid" style="margin-bottom:12px;">
@@ -2184,6 +2207,90 @@ async function renderTeacherPanel(skipFetch){
     renderAttBulkList(e.target.value);
     const sendWrap = document.getElementById('attAbsentSendWrap');
     if(sendWrap) sendWrap.innerHTML = '';
+  });
+
+  // ===== 🎡 عجلة الحظ =====
+  // بنفتكر مين اتاخد قبل كده في نفس اللفة لكل صف، عشان محدش ياخد نصيبه مرتين قبل زمايله
+  if(!state.pickerUsed) state.pickerUsed = {};
+  const pickerWheel = document.getElementById('pickerWheel');
+  const pickerSpinBtn = document.getElementById('pickerSpinBtn');
+  const pickerResetBtn = document.getElementById('pickerResetBtn');
+  const pickerHistoryWrap = document.getElementById('pickerHistoryWrap');
+  let pickerSpinning = false;
+
+  function pickerStudentsFor(klass){
+    return klass==='__ALL__' ? state.index.slice() : state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
+  }
+  function renderPickerHistory(klass){
+    const list = pickerStudentsFor(klass);
+    const used = state.pickerUsed[klass] || [];
+    if(!used.length){ pickerHistoryWrap.innerHTML = ''; return; }
+    const usedNames = used.map(code => list.find(s=>s.code===code)?.name).filter(Boolean);
+    pickerHistoryWrap.innerHTML = `<p class="hint" style="margin:0;text-align:right;">اتاخدوا في اللفة دي (${used.length}/${list.length}): ${usedNames.join('، ')}</p>`;
+  }
+  document.getElementById('pickerClass').addEventListener('change', (e)=>{
+    const klass = e.target.value;
+    if(!klass){
+      pickerWheel.innerHTML = `<div class="empty">اختار الصف الأول 👆</div>`;
+      pickerSpinBtn.disabled = true; pickerResetBtn.disabled = true;
+      pickerHistoryWrap.innerHTML = '';
+      return;
+    }
+    const list = pickerStudentsFor(klass);
+    if(!list.length){
+      pickerWheel.innerHTML = `<div class="empty">مفيش طلاب في الصف ده</div>`;
+      pickerSpinBtn.disabled = true; pickerResetBtn.disabled = true;
+      return;
+    }
+    pickerWheel.innerHTML = `<div class="empty">${list.length} طالب جاهزين — دوس "دور العجلة"</div>`;
+    pickerSpinBtn.disabled = false; pickerResetBtn.disabled = false;
+    renderPickerHistory(klass);
+  });
+  pickerSpinBtn.addEventListener('click', ()=>{
+    if(pickerSpinning) return;
+    const klass = document.getElementById('pickerClass').value;
+    if(!klass) return;
+    const list = pickerStudentsFor(klass);
+    if(!list.length){ toast('مفيش طلاب في الصف ده'); return; }
+    let used = state.pickerUsed[klass] || [];
+    let available = list.filter(s=>!used.includes(s.code));
+    if(!available.length){
+      state.pickerUsed[klass] = [];
+      used = [];
+      available = list.slice();
+      toast('🎉 كل الفصل خد فرصته! هنبدأ لفة جديدة');
+    }
+    pickerSpinning = true;
+    pickerSpinBtn.disabled = true;
+    const winner = available[Math.floor(Math.random()*available.length)];
+    let ticks = 0;
+    const totalTicks = 16 + Math.floor(Math.random()*6);
+    const spinTimer = setInterval(()=>{
+      const randomName = list[Math.floor(Math.random()*list.length)].name;
+      pickerWheel.innerHTML = `<div style="font-size:19px;font-weight:800;color:var(--muted);">${randomName}</div>`;
+      pickerWheel.style.transform = ticks%2? 'scale(1.03)' : 'scale(0.98)';
+      ticks++;
+      if(ticks >= totalTicks){
+        clearInterval(spinTimer);
+        pickerWheel.style.transform = 'scale(1)';
+        pickerWheel.innerHTML = `
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">🏆 الطالب اللي هيحل السؤال</div>
+          <div style="font-size:24px;font-weight:900;color:var(--brass);">${winner.name}</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">${winner.klass||''}</div>
+        `;
+        state.pickerUsed[klass] = [...used, winner.code];
+        renderPickerHistory(klass);
+        pickerSpinning = false;
+        pickerSpinBtn.disabled = false;
+      }
+    }, 90);
+  });
+  pickerResetBtn.addEventListener('click', ()=>{
+    const klass = document.getElementById('pickerClass').value;
+    if(!klass) return;
+    state.pickerUsed[klass] = [];
+    renderPickerHistory(klass);
+    toast('اتمسحت اللفة — كل الفصل متاح تاني');
   });
 
   function toggleWaBulkDateField(){
