@@ -2163,7 +2163,8 @@ async function renderTeacherPanel(skipFetch){
         st.attendance.push({date, status});
         await Promise.all([ saveStudent(code, st), syncStudentRisk(code, st) ]);
         if(status==='absent' && st.parentPhone){
-          const msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${fmtDate(date)}: الطالب كان غايب.\n— ${TEACHER.name}`;
+          const studentLink = location.origin + location.pathname + '?code=' + code;
+          const msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${fmtDate(date)}: الطالب كان غايب.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${studentLink}`;
           return {absent:true, name:st.name, phone:st.parentPhone, msg};
         }
         return {absent:false};
@@ -2317,26 +2318,28 @@ async function renderTeacherPanel(skipFetch){
       if(klassFilter && normalizeClass(entry.klass) !== normalizeClass(klassFilter)) continue;
       const st = await getStudent(entry.code);
       if(!st || !st.parentPhone) continue;
+      const studentLink = location.origin + location.pathname + '?code=' + entry.code;
+      const linkLine = `\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${studentLink}`;
       let msg = null;
       if(type==='attendance'){
         const att = st.attendance||[];
         const match = att.find(a=>a.date===selDate);
         if(!match) continue;
         const statusTxt = match.status==='present' ? 'كان حاضر' : 'كان غايب';
-        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${fmtDate(match.date)}: الطالب ${statusTxt}.\n— ${TEACHER.name}`;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص حصة يوم ${fmtDate(match.date)}: الطالب ${statusTxt}.\n— ${TEACHER.name}${linkLine}`;
       } else if(type==='exam'){
         const exams = st.exams||[];
         if(!exams.length) continue;
         const last = exams[exams.length-1];
-        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nالطالب جاب في ${last.name}: ${last.score} من ${last.max}.\n— ${TEACHER.name}`;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nالطالب جاب في ${last.name}: ${last.score} من ${last.max}.\n— ${TEACHER.name}${linkLine}`;
       } else if(type==='payment'){
         const pays = st.payments||[];
         const match = pays.find(p=>p.date===selDate);
         if(!match) continue;
         const statusTxt = match.status==='paid' ? `تم دفع ${match.amount} جنيه` : `متبقي عليه ${match.amount} جنيه`;
-        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص ${match.term}: ${statusTxt}.\n— ${TEACHER.name}`;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص ${match.term}: ${statusTxt}.\n— ${TEACHER.name}${linkLine}`;
       } else if(type==='custom'){
-        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n${customText}\n— ${TEACHER.name}`;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n${customText}\n— ${TEACHER.name}${linkLine}`;
       }
       if(msg) rows.push({name:st.name, phone:st.parentPhone, msg});
     }
