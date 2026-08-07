@@ -1890,7 +1890,7 @@ async function renderTeacherPanel(skipFetch){
     const max = parseInt(document.getElementById('quickGradeMax').value)||100;
     if(!klass){ toast('اختار الفصل الأول'); return; }
     if(!examName){ toast('اكتب اسم الامتحان'); return; }
-    const students = state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
+    const students = sortByName(state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass)));
     if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }    const wrap = document.getElementById('quickGradeTableWrap');
     wrap.innerHTML = `
       <div style="overflow-x:auto;">
@@ -2009,7 +2009,7 @@ async function renderTeacherPanel(skipFetch){
     const date = document.getElementById('payBulkDate').value;
     const monthStr = date.substring(0,7);
     if(!klass){ toast('اختار الفصل الأول'); return; }
-    const students = state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
+    const students = sortByName(state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass)));
     if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
     showLoading('جاري تحميل بيانات الدفع...');
     const studentsData = await Promise.all(students.map(s=>getStudent(s.code)));
@@ -2136,7 +2136,7 @@ async function renderTeacherPanel(skipFetch){
   function renderAttBulkList(klass){
     const wrap = document.getElementById('attBulkListWrap');
     if(!klass){ wrap.innerHTML=''; return; }
-    const list = klass==='__ALL__' ? state.index.slice() : state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass));
+    const list = sortByName(klass==='__ALL__' ? state.index : state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass)));
     if(!list.length){ wrap.innerHTML = `<div class="empty">مفيش طلاب في الصف ده</div>`; return; }
     wrap.innerHTML = list.map(attBulkRowHTML).join('') +
       `<button class="btn btn-brass btn-sm" id="attBulkSaveBtn" style="margin-top:10px;">حفظ حضور الكل (${list.length})</button>`;
@@ -2314,7 +2314,7 @@ async function renderTeacherPanel(skipFetch){
     listEl.innerHTML = `<div class="empty">جاري التجهيز...</div>`;
     const idx = await getIndex();
     const rows = [];
-    for(const entry of idx){
+    for(const entry of sortByName(idx)){
       if(klassFilter && normalizeClass(entry.klass) !== normalizeClass(klassFilter)) continue;
       const st = await getStudent(entry.code);
       if(!st || !st.parentPhone) continue;
@@ -2573,6 +2573,11 @@ async function renderTeacherPanel(skipFetch){
 
 
 /* تصفية الطلاب بالاسم أو الكود (بحث) + الصف */
+/* ترتيب أبجدي عربي موحّد (أ، ب، ت...) بيتستخدم في كل قوائم الطلاب */
+function sortByName(list){
+  return (list||[]).slice().sort((a,b)=> (a.name||'').localeCompare((b.name||''), 'ar'));
+}
+
 function filterStudents(list, query, klass){
   list = list||[];
   let out = list;
@@ -2584,7 +2589,7 @@ function filterStudents(list, query, klass){
     const q = query.trim().toLowerCase();
     out = out.filter(s => (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q));
   }
-  return out;
+  return sortByName(out);
 }
 
 /* قائمة الصفوف الموجودة فعليًا عند الطلاب، بترتيب الصفوف الستة المعروفة الأول وبعدين أي صف تاني */
