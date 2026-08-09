@@ -180,6 +180,26 @@
   .student-pick .cd{font-family:'Cairo',sans-serif;font-weight:800;letter-spacing:2px;color:var(--brass);font-size:13px;}
 
   .pin-box{max-width:260px;margin:0 auto;}
+  .atm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:6px;}
+  @media(min-width:520px){.atm-grid{grid-template-columns:repeat(3,1fr);}}
+  .atm-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 10px;background:var(--paper);border:1.5px solid var(--line);border-top:3.5px solid var(--tile-accent, var(--line));border-radius:14px;cursor:pointer;transition:transform .12s, box-shadow .12s;text-align:center;}
+  .atm-tile:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(0,0,0,.08);}
+  .atm-tile:active{transform:translateY(0);}
+  .atm-tile .atm-icon{font-size:30px;line-height:1;filter:saturate(1.15);}
+  .atm-tile .atm-label{font-size:13px;font-weight:800;color:var(--ink);}
+  .panel-section{display:none;}
+  .panel-section.active{display:block;}
+  #panelMenuWrap.hidden{display:none;}
+  .panel-quicksearch{position:relative;margin-bottom:14px;}
+  .panel-quicksearch input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);font-size:14px;color:var(--ink);}
+  .panel-quicksearch-results{position:absolute;top:calc(100% + 6px);right:0;left:0;background:var(--paper);border:1.5px solid var(--line);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.12);z-index:20;max-height:280px;overflow-y:auto;display:none;}
+  .panel-quicksearch-results.show{display:block;}
+  .pqs-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);}
+  .pqs-row:last-child{border-bottom:none;}
+  .pqs-row:hover{background:var(--paper2);}
+  .pqs-row .nm{font-weight:700;font-size:13.5px;}
+  .pqs-row .meta{font-size:12px;color:var(--muted);}
+
   .toast{
     position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     background:var(--ink);color:#fff;padding:11px 20px;border-radius:30px;
@@ -1598,6 +1618,7 @@ async function renderTeacherPanel(skipFetch){
     hideLoading();
   }
   const riskyStudents = state.index.filter(s=>s.risk);
+  if(typeof state.panelSection === 'undefined') state.panelSection = null;
   $app.innerHTML = `
     ${brandbar(true)}
     <div class="topnav">
@@ -1606,11 +1627,6 @@ async function renderTeacherPanel(skipFetch){
     </div>
 
     <div class="card" id="birthdaysCard" style="display:none;"></div>
-
-    <div class="card" id="dashboardCard">
-      <div class="card-title"><span class="dot"></span> لوحة التحكم العامة</div>
-      <div class="empty">جاري حساب الإحصائيات...</div>
-    </div>
 
     ${ riskyStudents.length ? `
     <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
@@ -1624,7 +1640,34 @@ async function renderTeacherPanel(skipFetch){
     </div>
     ` : '' }
 
-    <div class="card">
+    <div id="panelMenuWrap">
+      <div class="panel-quicksearch">
+        <input type="text" id="panelQuickSearch" placeholder="🔍 دوّر على طالب بالاسم أو الكود..." autocomplete="off">
+        <div class="panel-quicksearch-results" id="panelQuickSearchResults"></div>
+      </div>
+      <div class="atm-grid">
+        <div class="atm-tile" data-panel="addstudent" style="--tile-accent:#2E7D32;"><span class="atm-icon">👤</span><span class="atm-label">إضافة طالب</span></div>
+        <div class="atm-tile" data-panel="grades" style="--tile-accent:#1565C0;"><span class="atm-icon">📝</span><span class="atm-label">رصد الدرجات</span></div>
+        <div class="atm-tile" data-panel="attendance" style="--tile-accent:#00838F;"><span class="atm-icon">✅</span><span class="atm-label">الحضور والغياب</span></div>
+        <div class="atm-tile" data-panel="wheel" style="--tile-accent:#7B1FA2;"><span class="atm-icon">🎡</span><span class="atm-label">عجلة الحظ</span></div>
+        <div class="atm-tile" data-panel="payments" style="--tile-accent:#B8860B;"><span class="atm-icon">💰</span><span class="atm-label">تسجيل المصروفات</span></div>
+        <div class="atm-tile" data-panel="whatsapp" style="--tile-accent:#25D366;"><span class="atm-icon">📤</span><span class="atm-label">رسائل واتساب</span></div>
+        <div class="atm-tile" data-panel="students" style="--tile-accent:#3949AB;"><span class="atm-icon">👥</span><span class="atm-label">كل الطلاب</span></div>
+        <div class="atm-tile" data-panel="dashboard" style="--tile-accent:#EF6C00;"><span class="atm-icon">📊</span><span class="atm-label">الإحصائيات</span></div>
+        <div class="atm-tile" data-panel="backup" style="--tile-accent:#546E7A;"><span class="atm-icon">💾</span><span class="atm-label">نسخة احتياطية</span></div>
+        <div class="atm-tile" data-panel="trash" style="--tile-accent:#C62828;"><span class="atm-icon">🗑️</span><span class="atm-label">سلة المحذوفات</span></div>
+      </div>
+    </div>
+
+    <div class="panel-section" data-panel="dashboard">
+    <div class="card" id="dashboardCard">
+      <div class="card-title"><span class="dot"></span> لوحة التحكم العامة</div>
+      <div class="empty">جاري حساب الإحصائيات...</div>
+    </div>
+    </div>
+
+    <div class="panel-section" data-panel="addstudent">
+      <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة طالب جديد</div>
       <form id="addForm" class="form-grid" style="align-items:end;">
         <div class="field"><label>اسم الطالب</label><input type="text" id="newName" required></div>
@@ -1642,7 +1685,9 @@ async function renderTeacherPanel(skipFetch){
       <p class="hint" style="margin:8px 0 0;text-align:right;">لو مش حاطط كود، سيب الخانة فاضية بس خلّي الترتيب زي ما هو (الاسم، الصف، فاضي، الرقم).</p>
       <button class="btn btn-brass btn-sm" id="bulkStudentsBtn" style="margin-top:10px;">استيراد الكل</button>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="grades">
     <div class="card">
       <div class="card-title"><span class="dot"></span> 📝 إدخال درجات الفصل — جدول سريع</div>
       <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل والامتحان، وادخل درجة كل طالب مباشرة في الجدول — بدون ما تفتح أي طالب.</p>
@@ -1661,7 +1706,9 @@ async function renderTeacherPanel(skipFetch){
       <button class="btn btn-brass btn-sm" id="quickGradeLoadBtn">📋 تحميل الطلاب</button>
       <div id="quickGradeTableWrap" style="margin-top:14px;"></div>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="attendance">
     <div class="card">
       <div class="card-title"><span class="dot"></span> تسجيل حضور جماعي للصف</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">اختار الصف، هيظهرلك كل طلابه وكل واحد متعلّم "حاضر" افتراضيًا — غيّر اللي غايب بس وادوس حفظ.</p>
@@ -1679,7 +1726,9 @@ async function renderTeacherPanel(skipFetch){
       <div id="attBulkListWrap"></div>
       <div id="attAbsentSendWrap"></div>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="wheel">
     <div class="card">
       <div class="card-title"><span class="dot"></span> 🎡 عجلة الحظ — اختار طالب عشوائي</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">اختار الصف ودوس "دور العجلة" — هتختارلك طالب عشوائي يحل السؤال. العجلة بتفتكر مين اتاخد قبل كده في نفس اللفة عشان تدّي فرصة لكل الفصل الأول قبل ما حد ياخد فرصة تانية.</p>
@@ -1702,7 +1751,9 @@ async function renderTeacherPanel(skipFetch){
       </div>
       <div id="pickerHistoryWrap" style="margin-top:10px;"></div>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="payments">
     <div class="card">
       <div class="card-title"><span class="dot"></span> 💰 تسجيل دفع الفصل — جدول سريع</div>
       <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل، هيظهرلك كل طلابه — تقدر تسجل دفع لكل واحد في نفس الوقت.</p>
@@ -1719,7 +1770,12 @@ async function renderTeacherPanel(skipFetch){
       </div>
       <button class="btn btn-brass btn-sm" id="payBulkLoadBtn">💳 تحميل الطلاب</button>
       <div id="payBulkTableWrap" style="margin-top:14px;"></div>
-    </div> (أسرع من واحد واحد)</div>
+    </div>
+    </div>
+
+    <div class="panel-section" data-panel="whatsapp">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> 📤 رسائل واتساب جماعية (أسرع من واحد واحد)</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">اختار نوع الرسالة، ولو حضور أو مصروفات حدد اليوم بالظبط عشان محدش ياخد رسالة مكررة. تقدر كمان تحدد صف معيّن بدل كل الطلاب.</p>
       <div class="form-grid" style="margin-bottom:8px;">
         <div class="field">
@@ -1750,12 +1806,9 @@ async function renderTeacherPanel(skipFetch){
       <button class="btn btn-brass btn-sm" id="waBulkBuildBtn" style="margin-bottom:10px;">تجهيز القايمة</button>
       <div id="waBulkList"></div>
     </div>
-
-    <div class="card" id="starsLeaderboardCard">
-      <div class="card-title"><span class="dot"></span> ⭐ لوحة النجوم — ترتيب النقاط</div>
-      <div class="empty" id="starsListWrap">جاري التحميل...</div>
     </div>
 
+    <div class="panel-section" data-panel="students">
     <div class="card">
       <div class="card-title"><span class="dot"></span> الطلاب 
         <span style="font-size:13px;font-weight:500;color:var(--muted);margin-right:6px;">
@@ -1785,7 +1838,9 @@ async function renderTeacherPanel(skipFetch){
       </div>
       <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter))}</div>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="backup">
     <div class="card">
       <div class="card-title"><span class="dot"></span> نسخة احتياطية من البيانات</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">نزّل ملف فيه كل بيانات الطلاب (حضور، درجات، مصروفات، صور) واحتفظ بيه في مكان آمن. لو حصلت مشكلة في القاعدة، ترجع تستوردها تاني من نفس الملف.</p>
@@ -1797,14 +1852,81 @@ async function renderTeacherPanel(skipFetch){
         </label>
       </div>
     </div>
+    </div>
 
+    <div class="panel-section" data-panel="trash">
     <div class="card">
       <div class="card-title"><span class="dot"></span> سلة المحذوفات</div>
       <p class="hint" style="margin:0 0 10px;text-align:right;">الطلاب اللي اتمسحوا بيتحفظوا هنا وتقدر تسترجعهم بكل بياناتهم وقت ما تحب.</p>
       <div id="trashListContainer"><div class="empty">جاري التحميل...</div></div>
     </div>
+    </div>
   `;
-  document.getElementById('toHome').addEventListener('click', ()=>{ state.teacherAuthed=false; state.view='home'; render(); });
+  function showPanelSection(id){
+    state.panelSection = id;
+    const menuWrap = document.getElementById('panelMenuWrap');
+    if(menuWrap) menuWrap.classList.add('hidden');
+    document.querySelectorAll('.panel-section').forEach(el=>el.classList.remove('active'));
+    const target = document.querySelector(`.panel-section[data-panel="${id}"]`);
+    if(target) target.classList.add('active');
+    document.getElementById('toHome').textContent = '→ رجوع للقائمة';
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+  function showPanelMenu(){
+    state.panelSection = null;
+    const menuWrap = document.getElementById('panelMenuWrap');
+    if(menuWrap) menuWrap.classList.remove('hidden');
+    document.querySelectorAll('.panel-section').forEach(el=>el.classList.remove('active'));
+    document.getElementById('toHome').textContent = '→ خروج';
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+  document.querySelectorAll('.atm-tile').forEach(tile=>{
+    tile.addEventListener('click', ()=> showPanelSection(tile.dataset.panel));
+  });
+  if(state.panelSection){ showPanelSection(state.panelSection); }
+
+  // بحث سريع عن طالب فوق المربعات
+  const pqsInput = document.getElementById('panelQuickSearch');
+  const pqsResults = document.getElementById('panelQuickSearchResults');
+  if(pqsInput){
+    pqsInput.addEventListener('input', ()=>{
+      const q = pqsInput.value.trim().toLowerCase();
+      if(!q){ pqsResults.classList.remove('show'); pqsResults.innerHTML=''; return; }
+      const matches = sortByName(state.index.filter(s =>
+        (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q)
+      )).slice(0, 8);
+      if(!matches.length){
+        pqsResults.innerHTML = `<div class="pqs-row" style="cursor:default;color:var(--muted);">مفيش نتائج</div>`;
+        pqsResults.classList.add('show');
+        return;
+      }
+      pqsResults.innerHTML = matches.map(s=>`
+        <div class="pqs-row" data-pqs-code="${s.code}">
+          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'} · ${s.code}</div></div>
+          <span style="color:var(--muted);">←</span>
+        </div>
+      `).join('');
+      pqsResults.classList.add('show');
+      pqsResults.querySelectorAll('[data-pqs-code]').forEach(row=>{
+        row.addEventListener('click', ()=>{
+          state.editingCode = row.dataset.pqsCode;
+          state.view = 'studentEditor';
+          render();
+        });
+      });
+    });
+    document.addEventListener('click', (e)=>{
+      if(!pqsInput.contains(e.target) && !pqsResults.contains(e.target)){
+        pqsResults.classList.remove('show');
+      }
+    });
+  }
+
+  document.getElementById('toHome').addEventListener('click', ()=>{
+    if(state.panelSection){ showPanelMenu(); return; }
+    state.panelSection = null;
+    state.teacherAuthed=false; state.view='home'; render();
+  });
   document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
     state.studentSearch = e.target.value;
     document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter));
@@ -2542,33 +2664,6 @@ async function renderTeacherPanel(skipFetch){
     }));
   }
   renderTrashList();
-
-  // تحميل لوحة النجوم
-  (async ()=>{
-    const wrap = document.getElementById('starsListWrap');
-    if(!wrap) return;
-    const idx = await getIndex();
-    const withPoints = idx.filter(s=>(s.points||0)>0).sort((a,b)=>(b.points||0)-(a.points||0));
-    if(!withPoints.length){ wrap.innerHTML='<div class="empty">لسه مفيش نقاط مسجّلة</div>'; return; }
-    wrap.innerHTML = withPoints.map((s,i)=>{
-      const stars = '⭐'.repeat(Math.min(s.points||0, 20));
-      const medals = ['🥇','🥈','🥉'];
-      const medal = medals[i] || '';
-      const avatar = s.photo
-        ? '<img src="'+s.photo+'" alt="'+s.name+'" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);flex-shrink:0;">'
-        : '<div style="width:34px;height:34px;border-radius:50%;background:var(--paper2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--brass);flex-shrink:0;">'+(s.name||'?').charAt(0)+'</div>';
-      return '<div class="student-pick">'
-        +'<div style="display:flex;align-items:center;gap:10px;">'
-        +'<span style="font-weight:800;color:var(--brass);width:24px;text-align:center;">'+(medal||i+1)+'</span>'
-        +avatar
-        +'<div><div class="nm">'+s.name+'</div><div class="meta">'+(s.klass||'—')+'</div></div>'
-        +'</div>'
-        +'<div style="text-align:left;flex-shrink:0;">'
-        +'<div style="font-weight:800;color:var(--brass);">'+s.points+' نقطة</div>'
-        +'<div style="font-size:11px;letter-spacing:1px;">'+stars+'</div>'
-        +'</div></div>';
-    }).join('');
-  })();
 }
 
 
