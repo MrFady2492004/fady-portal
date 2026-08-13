@@ -2720,7 +2720,32 @@ async function renderStudentEditor(){
   showLoading('جاري تحميل بيانات الطالب...');
   const s = await getStudent(code);
   hideLoading();
-  if(!s){ toast('الطالب غير موجود'); state.view='teacherPanel'; render(); return; }
+  if(!s){
+    hideLoading();
+    $app.innerHTML = `
+      ${brandbar(true)}
+      <div class="topnav">
+        <div class="back" id="toPanel">→ كل الطلاب</div>
+        <strong style="font-size:14px;">بيانات ناقصة</strong>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:#D9534F;"></span> ⚠️ بيانات الطالب دي مش موجودة</div>
+        <p class="hint" style="margin:0 0 14px;text-align:right;">الطالب ده موجود اسمه في القايمة، لكن بياناته الأساسية (الحضور، الدرجات، المصروفات) مش موجودة على السيرفر — على الأغلب حصل خطأ وقت إضافته من زمان. تقدر تمسح السجل الناقص ده من القايمة عشان تنضّفها.</p>
+        <button class="btn btn-danger" id="delOrphanBtn">🗑️ حذف السجل الناقص نهائيًا</button>
+      </div>
+    `;
+    document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
+    document.getElementById('delOrphanBtn').addEventListener('click', async ()=>{
+      if(!confirm('متأكد إنك عايز تمسح السجل ده نهائي؟ مفيش رجوع فيه لأنه مالوش بيانات أصلًا.')) return;
+      let idx = await getIndex();
+      idx = idx.filter(x=>x.code!==code);
+      await saveIndex(idx);
+      state.index = idx;
+      toast('🗑️ تم حذف السجل الناقص');
+      state.view='teacherPanel'; render();
+    });
+    return;
+  }
 
   const link = location.origin + location.pathname + '?code=' + code;
   const risk = riskStatus(s);
