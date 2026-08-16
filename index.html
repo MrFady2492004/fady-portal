@@ -790,11 +790,11 @@ async function purgeFromTrash(trashIdx){
   await saveTrash(trash);
 }
 /* بعد أي تعديل على امتحانات طالب، بنحدّث مجموع نقاطه في الفهرس (index) عشان قائمة "أفضل 10" تفضل دقيقة */
-async function syncStudentPoints(code, exams){
+async function syncStudentPoints(code, exams, bonusPoints){
   const idx = await getIndex();
   const entry = idx.find(x=>x.code===code);
   if(entry){
-    entry.points = totalPoints(exams);
+    entry.points = totalPoints(exams) + (Number(bonusPoints)||0);
     await saveIndex(idx);
   }
 }
@@ -830,13 +830,10 @@ function examsAvg(exams){
   exams.forEach(e=> sumPct += (Number(e.score)/Number(e.max))*100 );
   return Math.round(sumPct/exams.length);
 }
-/* نظام النجوم: 100%=3 نجوم، 95%=2 نجوم، 90%=1 نجمة */
+/* نظام النجوم: نجمة واحدة بس لو الطالب جاب 100% بالظبط في الامتحان */
 function examPoints(score, max){
   const pct = (Number(score)/Number(max))*100;
-  if(pct>=100) return 3;
-  if(pct>=95) return 2;
-  if(pct>=90) return 1;
-  return 0;
+  return pct >= 100 ? 1 : 0;
 }
 function examStars(score, max){
   return '⭐'.repeat(examPoints(score, max));
@@ -844,12 +841,6 @@ function examStars(score, max){
 function totalPoints(exams){
   exams = exams||[];
   return exams.reduce((sum,e)=> sum + examPoints(e.score, e.max), 0);
-}
-/* نجمة الحضور: إذا كان الحضور 90%+ */
-function attStar(attPct){ return attPct >= 90 ? 1 : 0; }
-/* إجمالي النجوم شامل الحضور */
-function totalStarsWithAtt(exams, attPct){
-  return totalPoints(exams) + attStar(attPct);
 }
 /* SVG نجمة واحدة */
 function starSVG(filled, color, size){
@@ -1158,16 +1149,15 @@ function socialLinksHTML(){
 
 /* ---------------- Views ---------------- */
 function topStudentsHTML(idx){
-  const top10 = (idx||[])
-    .filter(s=> (s.points||0) > 0)
+  const qualified = (idx||[])
+    .filter(s=> (s.points||0) >= 5)
     .slice()
-    .sort((a,b)=> (b.points||0) - (a.points||0))
-    .slice(0,10);
-  if(!top10.length) return '';
+    .sort((a,b)=> (b.points||0) - (a.points||0));
+  if(!qualified.length) return '';
   return `
     <div class="card">
-      <div class="card-title"><span class="dot"></span> 🏆 أفضل 10 شطار في السنتر</div>
-      ${top10.map((s,i)=>`
+      <div class="card-title"><span class="dot"></span> 🏆 شطار السنتر (اللي قفلوا 5 امتحانات 100% فأكتر)</div>
+      ${qualified.map((s,i)=>`
         <div class="student-pick">
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-weight:800;color:var(--brass);width:20px;flex-shrink:0;text-align:center;">${i+1}</span>
@@ -1177,7 +1167,7 @@ function topStudentsHTML(idx){
             }
             <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
           </div>
-          <span style="font-weight:800;color:var(--brass);white-space:nowrap;">${s.points} نقطة</span>
+          <span style="font-weight:800;color:var(--brass);white-space:nowrap;">${s.points} ⭐</span>
         </div>
       `).join('')}
     </div>
@@ -1237,8 +1227,7 @@ function renderReport(){
   const avg = examsAvg(s.exams);
   const pay = paymentsSummary(s.payments);
   const examPts = totalPoints(s.exams||[]);
-  const attPt = attStar(att.pct);
-  const totalPts = examPts + attPt;
+  const totalPts = examPts + (Number(s.bonusPoints)||0);
   const badge = getHeroBadge(totalPts, att.pct);
   const attStatus = getLastAttStatus(s.attendance);
   const greeting = getGreeting(s.name);
@@ -1364,7 +1353,7 @@ function renderReport(){
         </tbody></table>
         <div class="row" style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;">
           <span class="meta">إجمالي نقاط الطالب</span>
-          <span style="font-weight:800;color:var(--brass);">${totalPoints(s.exams)} نقطة</span>
+          <span style="font-weight:800;color:var(--brass);">${totalPoints(s.exams) + (Number(s.bonusPoints)||0)} نقطة</span>
         </div>
       ` : `<div class="empty">لا يوجد امتحانات مسجّلة بعد</div>` }
     </div>
@@ -1417,8 +1406,8 @@ function renderReport(){
     const attStats = attendanceStats(s.attendance);
     const exams = s.exams||[];
     const examPts = totalPoints(exams);
-    const attPt = attStar(attStats.pct);
-    const totalPts = examPts + attPt;
+    const bonusPts = Number(s.bonusPoints)||0;
+    const totalPts = examPts + bonusPts;
 
     // ملء الكارت الرابع
     const starsStatCard = document.getElementById('starsStatCard');
@@ -1438,7 +1427,7 @@ function renderReport(){
       <div class="stars-card-inner">
         <div>
           <div class="stars-big-num">${totalPts} ⭐</div>
-          <div class="meta" style="font-size:13px;margin-top:4px;">إجمالي النجوم (امتحانات + حضور)</div>
+          <div class="meta" style="font-size:13px;margin-top:4px;">إجمالي النجوم — نجمة لكل امتحان 100%</div>
         </div>
         ${badge}
       </div>
@@ -1450,16 +1439,18 @@ function renderReport(){
         const pts = examPoints(Number(e.score), Number(e.max));
         html += `<div class="stars-row-item">
           <span class="s-lbl">${e.name}</span>
-          <span>${starsRowHTML(pts,3,'#D9A52A',18,true)}</span>
+          <span>${starsRowHTML(pts,1,'#D9A52A',18,true)}</span>
           <span class="meta" style="font-size:12px;margin-right:6px;">${e.score}/${e.max}</span>
         </div>`;
       });
     }
-    html += `<div class="stars-row-item" style="margin-top:6px;">
-      <span class="s-lbl">نجمة الحضور (${attStats.pct}%)</span>
-      <span>${starsRowHTML(attPt,1,'#2F7A52',18,true)}</span>
-      <span class="meta" style="font-size:12px;margin-right:6px;">${attPt===1?'تم الحصول عليها ✅':'لم تُكتسب بعد'}</span>
-    </div>`;
+    if(bonusPts > 0){
+      html += `<div class="stars-row-item" style="margin-top:6px;">
+        <span class="s-lbl">نجوم من ${TEACHER.name}</span>
+        <span>${starsRowHTML(bonusPts,bonusPts,'#2F7A52',18,true)}</span>
+        <span class="meta" style="font-size:12px;margin-right:6px;">مجهود إضافي 🌟</span>
+      </div>`;
+    }
     if(totalPts > 0){
       html += `<div class="stars-all">${starsRowHTML(totalPts, Math.max(totalPts,1), '#D9A52A', 22, true)}</div>`;
     }
@@ -1475,8 +1466,7 @@ function renderReport(){
     const exams = s.exams||[];
     const avg = examsAvg(exams);
     const examPts = totalPoints(exams);
-    const attPt = attStar(attStats.pct);
-    const totalPts = examPts + attPt;
+    const totalPts = examPts + (Number(s.bonusPoints)||0);
     const lastExam = exams.length ? exams[exams.length-1] : null;
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#13222F'; ctx.fillRect(0,0,W,H);
@@ -2107,7 +2097,7 @@ async function renderTeacherPanel(skipFetch){
         st.exams.push({name:examName2, date:examDate, score:val, max:examMax});
         await saveStudent(code, st);
         const entry = idx2.find(x=>x.code===code);
-        if(entry){ entry.points=totalPoints(st.exams); entry.risk=riskStatus(st).atRisk; }
+        if(entry){ entry.points=totalPoints(st.exams) + (Number(st.bonusPoints)||0); entry.risk=riskStatus(st).atRisk; }
         inp.classList.add('filled'); inp.disabled=true;
         saved++;
       }
@@ -2796,8 +2786,10 @@ async function renderStudentEditor(){
         <div class="field"><label>الصف</label><input type="text" id="editStudentClass" list="classDatalist2" value="${(s.klass||'').replace(/"/g,'&quot;')}" placeholder="مثال: رابعة ابتدائي"></div>
         <datalist id="classDatalist2">${CLASS_LEVELS.map(c=>`<option value="${c}">`).join('')}</datalist>
         <div class="field"><label>تاريخ الميلاد</label><input type="date" id="editStudentBirthdate" value="${s.birthdate||''}"></div>
+        <div class="field"><label>⭐ نجوم إضافية (بونص)</label><input type="number" min="0" id="editStudentBonus" value="${Number(s.bonusPoints)||0}"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ التعديل</button>
       </form>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">النجوم الإضافية بتتحسب فوق نجوم الامتحانات — استخدمها كمكافأة لأي مجهود تشوفه يستاهل (مشاركة، سلوك، تحسّن...).</p>
     </div>
 
     <div class="card">
@@ -2954,12 +2946,17 @@ async function renderStudentEditor(){
     const newName = document.getElementById('editStudentName').value.trim();
     const newClass = normalizeClass(document.getElementById('editStudentClass').value);
     const newBirthdate = document.getElementById('editStudentBirthdate').value;
+    const newBonus = Math.max(0, parseInt(document.getElementById('editStudentBonus').value)||0);
     if(!newName){ toast('اكتب اسم الطالب'); return; }
-    s.name = newName; s.klass = newClass; s.birthdate = newBirthdate;
+    s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus;
     await saveStudent(code, s);
     const idx = await getIndex();
     const entry = idx.find(x=>x.code===code);
-    if(entry){ entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate; await saveIndex(idx); state.index = idx; }
+    if(entry){
+      entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate;
+      entry.points = totalPoints(s.exams) + newBonus;
+      await saveIndex(idx); state.index = idx;
+    }
     toast('تم حفظ بيانات الطالب ✅');
     renderStudentEditor();
   });
@@ -3040,7 +3037,7 @@ async function renderStudentEditor(){
     if(!name||score===''||max==='') return;
     s.exams = s.exams||[]; s.exams.push({name,date,score,max});
     addLog(s, `أضاف درجة ${name}: ${score} من ${max}`);
-    await saveStudent(code, s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s);
+    await saveStudent(code, s); await syncStudentPoints(code, s.exams, s.bonusPoints); await syncStudentRisk(code, s);
     toast('✅ تم حفظ الدرجة');
     renderStudentEditor();
   });
@@ -3081,7 +3078,7 @@ async function renderStudentEditor(){
     const delIdx4=Number(b.dataset.delAtt); addLog(s,`حذف سجل حضور يوم ${fmtDate(s.attendance[delIdx4]?.date||'')}`); s.attendance.splice(delIdx4,1); await saveStudent(code,s); await syncStudentRisk(code, s); toast('🗑️ تم حذف سجل الحضور'); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-exam]').forEach(b=>b.addEventListener('click', async ()=>{
-    const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams); await syncStudentRisk(code, s); toast('🗑️ تم حذف الدرجة'); renderStudentEditor();
+    const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams, s.bonusPoints); await syncStudentRisk(code, s); toast('🗑️ تم حذف الدرجة'); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
     const delIdx6=Number(b.dataset.delPay); addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); toast('🗑️ تم حذف سجل المصروفات'); renderStudentEditor();
