@@ -2086,7 +2086,7 @@ async function renderTeacherPanel(skipFetch){
       let saved=0, skipped=0;
       const btn = document.getElementById('quickGradeSaveBtn');
       btn.textContent='⏳ جاري الحفظ...'; btn.disabled=true;
-      const idx2 = await getIndex();
+      const changes = {};
       for(const inp of inputs){
         const val = inp.value.trim();
         if(val===''||isNaN(val)){ skipped++; continue; }
@@ -2096,12 +2096,18 @@ async function renderTeacherPanel(skipFetch){
         st.exams = st.exams||[];
         st.exams.push({name:examName2, date:examDate, score:val, max:examMax});
         await saveStudent(code, st);
-        const entry = idx2.find(x=>x.code===code);
-        if(entry){ entry.points=totalPoints(st.exams) + (Number(st.bonusPoints)||0); entry.risk=riskStatus(st).atRisk; }
+        changes[code] = { points: totalPoints(st.exams) + (Number(st.bonusPoints)||0), risk: riskStatus(st).atRisk };
         inp.classList.add('filled'); inp.disabled=true;
         saved++;
       }
-      await saveIndex(idx2);
+      // بنجيب أحدث نسخة من الفهرس دلوقتي (مش من بداية الجدول) عشان مانمسحش أي تعديل
+      // حصل من مكان تاني (زي إضافة درجة لطالب من صفحته لوحده) لحد وقت الحفظ ده
+      const freshIdx = await getIndex();
+      for(const entry of freshIdx){
+        if(changes[entry.code]){ entry.points = changes[entry.code].points; entry.risk = changes[entry.code].risk; }
+      }
+      await saveIndex(freshIdx);
+      state.index = freshIdx;
       btn.textContent='✅ تم الحفظ';
       toast(`تم حفظ ${saved} درجة${skipped?' — تم تخطي '+skipped+' فارغة':''}`);
     });
