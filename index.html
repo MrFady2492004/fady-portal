@@ -808,10 +808,19 @@ async function syncStudentRisk(code, student){
   }
 }
 
-function genCode(){
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s=''; for(let i=0;i<5;i++) s+=chars[Math.floor(Math.random()*chars.length)];
-  return s;
+/* كود الطالب بيتولّد بنفس نسق الأكواد الحالية (FA000, FA001...) بترتيب تصاعدي */
+function genCode(list){
+  list = list||[];
+  const nums = list.map(s=>{
+    const m = /^FA(\d+)$/.exec(s.code||'');
+    return m ? parseInt(m[1],10) : -1;
+  });
+  let next = (nums.length ? Math.max(...nums) : -1) + 1;
+  let code = 'FA' + String(next).padStart(3,'0');
+  while(list.find(s=>s.code===code)){
+    next++; code = 'FA' + String(next).padStart(3,'0');
+  }
+  return code;
 }
 
 /* ---------------- Calc helpers ---------------- */
@@ -1935,8 +1944,7 @@ async function renderTeacherPanel(skipFetch){
       if(idx.find(x=>x.code===manualCode)){ hideLoading(); toast('الكود ده مستخدم قبل كده — اختار كود تاني'); return; }
       code = manualCode;
     } else {
-      code = genCode();
-      while(idx.find(x=>x.code===code)) code = genCode();
+      code = genCode(idx);
     }
     idx.push({name, klass, code});
     await Promise.all([
@@ -1971,8 +1979,7 @@ async function renderTeacherPanel(skipFetch){
         if(idx.find(x=>x.code===manualCode)){ skipped++; continue; }
         code = manualCode;
       } else {
-        code = genCode();
-        while(idx.find(x=>x.code===code)) code = genCode();
+        code = genCode(idx);
       }
       idx.push({name, klass, code});
       const studentData = {name, klass, attendance:[], exams:[], payments:[]};
@@ -2786,16 +2793,19 @@ async function renderStudentEditor(){
     ` : '' }
 
     <div class="card">
-      <div class="card-title"><span class="dot"></span> بيانات الطالب</div>
+      <div class="card-title"><span class="dot"></span> بيانات الطالب
+        <span style="font-size:13px;font-weight:800;color:var(--brass);margin-right:8px;">⭐ ${totalPoints(s.exams) + (Number(s.bonusPoints)||0)} نجمة</span>
+      </div>
       <form id="editInfoForm" class="form-grid" style="align-items:end;">
         <div class="field"><label>اسم الطالب</label><input type="text" id="editStudentName" value="${(s.name||'').replace(/"/g,'&quot;')}" required></div>
         <div class="field"><label>الصف</label><input type="text" id="editStudentClass" list="classDatalist2" value="${(s.klass||'').replace(/"/g,'&quot;')}" placeholder="مثال: رابعة ابتدائي"></div>
         <datalist id="classDatalist2">${CLASS_LEVELS.map(c=>`<option value="${c}">`).join('')}</datalist>
         <div class="field"><label>تاريخ الميلاد</label><input type="date" id="editStudentBirthdate" value="${s.birthdate||''}"></div>
         <div class="field"><label>⭐ نجوم إضافية (بونص)</label><input type="number" min="0" id="editStudentBonus" value="${Number(s.bonusPoints)||0}"></div>
+        <div class="field"><label>كود الطالب</label><input type="text" id="editStudentCode" value="${code}" maxlength="10" style="font-family:Cairo;font-weight:800;letter-spacing:1px;"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ التعديل</button>
       </form>
-      <p class="hint" style="margin:8px 0 0;text-align:right;">النجوم الإضافية بتتحسب فوق نجوم الامتحانات — استخدمها كمكافأة لأي مجهود تشوفه يستاهل (مشاركة، سلوك، تحسّن...).</p>
+      <p class="hint" style="margin:8px 0 0;text-align:right;">النجوم الإضافية بتتحسب فوق نجوم الامتحانات — استخدمها كمكافأة لأي مجهود تشوفه يستاهل (مشاركة، سلوك، تحسّن...). لو غيّرت الكود، لازم تبعت الكود الجديد لولي الأمر لأن القديم مش هيشتغل تاني.</p>
     </div>
 
     <div class="card">
@@ -2953,16 +2963,45 @@ async function renderStudentEditor(){
     const newClass = normalizeClass(document.getElementById('editStudentClass').value);
     const newBirthdate = document.getElementById('editStudentBirthdate').value;
     const newBonus = Math.max(0, parseInt(document.getElementById('editStudentBonus').value)||0);
+    const newCode = document.getElementById('editStudentCode').value.trim().toUpperCase();
     if(!newName){ toast('اكتب اسم الطالب'); return; }
+    if(!newCode){ toast('اكتب كود الطالب'); return; }
+
+    showLoading('جاري حفظ البيانات...');
+    const idx = await getIndex();
+
+    // لو الكود اتغيّر، لازم نتأكد إنه مش مستخدم لطالب تاني، وننقل بياناته كلها للكود الجديد
+    if(newCode !== code){
+      if(idx.find(x=>x.code===newCode)){
+        hideLoading();
+        toast('الكود ده مستخدم لطالب تاني — اختار كود مختلف');
+        return;
+      }
+      s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus;
+      await saveStudent(newCode, s);
+      await dbDelete('students/'+code);
+      const entry = idx.find(x=>x.code===code);
+      if(entry){
+        entry.code = newCode; entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate;
+        entry.points = totalPoints(s.exams) + newBonus;
+      }
+      await saveIndex(idx); state.index = idx;
+      state.editingCode = newCode;
+      hideLoading();
+      toast('✅ اتغيّر الكود للطالب ده — الكود الجديد: '+newCode);
+      renderStudentEditor();
+      return;
+    }
+
     s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus;
     await saveStudent(code, s);
-    const idx = await getIndex();
     const entry = idx.find(x=>x.code===code);
     if(entry){
       entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate;
       entry.points = totalPoints(s.exams) + newBonus;
       await saveIndex(idx); state.index = idx;
     }
+    hideLoading();
     toast('تم حفظ بيانات الطالب ✅');
     renderStudentEditor();
   });
