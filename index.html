@@ -481,11 +481,12 @@ const TEACHER = {
 /* عاوز تغيّر الصورة؟ ابعتلي الصورة الجديدة وهعمل تضمين base64 جديد بنفس الطريقة */
 /* ===================================================== */
 
-let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'', studentSearch:'', classFilter:'' };
+let state = { view:'home', code:'', student:null, teacherAuthed:false, index:[], editingCode:null, msg:'', studentSearch:'', classFilter:'', sortBy:'name', sortDir:'asc' };
 let waBulkRows = [];
 let attAbsentRows = [];
 /* الصفوف الستة الثابتة عشان التصنيف والتصفية تكون موحّدة */
 const CLASS_LEVELS = ['رابعة ابتدائي','خمسة ابتدائي','سادسة ابتدائي','أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
+const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 /* توحيد كتابة اسم الصف (بيشيل المسافات الزيادة جوه الاسم) عشان الفلترة والعدّ يبقوا مظبوطين
    حتى لو المعلم كتب الصف بمسافات مختلفة كل مرة */
@@ -1776,6 +1777,7 @@ async function renderTeacherPanel(skipFetch){
             <option value="attendance">حالة حضور — يوم محدد</option>
             <option value="exam">آخر درجة امتحان مسجّلة</option>
             <option value="payment">حالة مصروفات — يوم محدد</option>
+            <option value="monthly">📊 تقرير شهري شامل</option>
             <option value="custom">رسالة عامة (نفس النص للكل)</option>
           </select>
         </div>
@@ -1789,6 +1791,9 @@ async function renderTeacherPanel(skipFetch){
       </div>
       <div id="waBulkDateWrap" class="form-grid" style="margin-bottom:10px;">
         <div class="field"><label>التاريخ</label><input type="date" id="waBulkDate" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div id="waBulkMonthWrap" class="form-grid" style="margin-bottom:10px;display:none;">
+        <div class="field"><label>الشهر</label><input type="month" id="waBulkMonth" value="${new Date().toISOString().slice(0,7)}"></div>
       </div>
       <div id="waBulkCustomWrap" style="display:none;margin-bottom:10px;">
         <div class="field"><label>نص الرسالة (هيتحط بعد اسم الطالب تلقائيًا)</label>
@@ -1827,8 +1832,22 @@ async function renderTeacherPanel(skipFetch){
             }).join('')}
           </select>
         </div>
+        <div class="field">
+          <label>الترتيب حسب</label>
+          <select id="studentSortBy">
+            <option value="name" ${(!state.sortBy||state.sortBy==='name')?'selected':''}>الاسم (أبجدي)</option>
+            <option value="code" ${state.sortBy==='code'?'selected':''}>الكود</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>اتجاه الترتيب</label>
+          <select id="studentSortDir">
+            <option value="asc" ${(!state.sortDir||state.sortDir==='asc')?'selected':''}>تصاعدي (أ→ي / الأصغر أولاً)</option>
+            <option value="desc" ${state.sortDir==='desc'?'selected':''}>تنازلي (ي→أ / الأكبر أولاً)</option>
+          </select>
+        </div>
       </div>
-      <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter))}</div>
+      <div id="studentListContainer">${renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter, state.sortBy, state.sortDir))}</div>
     </div>
     </div>
 
@@ -1919,15 +1938,25 @@ async function renderTeacherPanel(skipFetch){
     state.panelSection = null;
     state.teacherAuthed=false; state.view='home'; render();
   });
+  function refreshStudentList(){
+    document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter, state.sortBy, state.sortDir));
+    bindStudentListEvents();
+  }
   document.getElementById('studentSearchInput').addEventListener('input', (e)=>{
     state.studentSearch = e.target.value;
-    document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter));
-    bindStudentListEvents();
+    refreshStudentList();
   });
   document.getElementById('studentClassFilter').addEventListener('change', (e)=>{
     state.classFilter = e.target.value;
-    document.getElementById('studentListContainer').innerHTML = renderStudentListHTML(filterStudents(state.index, state.studentSearch, state.classFilter));
-    bindStudentListEvents();
+    refreshStudentList();
+  });
+  document.getElementById('studentSortBy').addEventListener('change', (e)=>{
+    state.sortBy = e.target.value;
+    refreshStudentList();
+  });
+  document.getElementById('studentSortDir').addEventListener('change', (e)=>{
+    state.sortDir = e.target.value;
+    refreshStudentList();
   });
   document.getElementById('addForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -2416,6 +2445,7 @@ async function renderTeacherPanel(skipFetch){
     const type = document.getElementById('waBulkType').value;
     const needsDate = (type==='attendance' || type==='payment');
     document.getElementById('waBulkDateWrap').style.display = needsDate ? 'grid' : 'none';
+    document.getElementById('waBulkMonthWrap').style.display = type==='monthly' ? 'grid' : 'none';
     document.getElementById('waBulkCustomWrap').style.display = type==='custom' ? 'block' : 'none';
   }
   toggleWaBulkDateField();
@@ -2428,6 +2458,7 @@ async function renderTeacherPanel(skipFetch){
     const customText = document.getElementById('waBulkCustomText').value.trim();
     if(type==='custom' && !customText){ toast('اكتب نص الرسالة الأول'); return; }
     if((type==='attendance' || type==='payment') && !selDate){ toast('اختار اليوم الأول'); return; }
+    if(type==='monthly' && !document.getElementById('waBulkMonth').value){ toast('اختار الشهر الأول'); return; }
     const listEl = document.getElementById('waBulkList');
     listEl.innerHTML = `<div class="empty">جاري التجهيز...</div>`;
     const idx = await getIndex();
@@ -2458,11 +2489,33 @@ async function renderTeacherPanel(skipFetch){
         msg = `حضرتك ولي أمر الطالب/ة ${st.name}\nبخصوص ${match.term}: ${statusTxt}.\n— ${TEACHER.name}${linkLine}`;
       } else if(type==='custom'){
         msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n${customText}\n— ${TEACHER.name}${linkLine}`;
+      } else if(type==='monthly'){
+        const monthVal = document.getElementById('waBulkMonth').value;
+        if(!monthVal) continue;
+        const attM = (st.attendance||[]).filter(a=>(a.date||'').startsWith(monthVal));
+        const examsM = (st.exams||[]).filter(ex=>(ex.date||'').startsWith(monthVal));
+        const paysM = (st.payments||[]).filter(p=>(p.date||'').startsWith(monthVal));
+        if(!attM.length && !examsM.length && !paysM.length) continue;
+        const presentCount = attM.filter(a=>a.status==='present').length;
+        const attPct = attM.length ? Math.round((presentCount/attM.length)*100) : null;
+        const examsAvgVal = examsM.length ? Math.round(examsM.reduce((sum,e)=> sum + (Number(e.score)/Number(e.max))*100, 0)/examsM.length) : null;
+        const starsMonth = examsM.reduce((sum,e)=> sum + examPoints(e.score, e.max), 0);
+        const payTxt = paysM.length
+          ? paysM.map(p=> `${p.term}: ${p.status==='paid' ? 'تم الدفع ('+p.amount+' جنيه)' : 'متبقي '+p.amount+' جنيه'}`).join('، ')
+          : 'مفيش سجل مصروفات الشهر ده';
+        const [yearPart, monthPart] = monthVal.split('-');
+        const monthLabel = (MONTH_NAMES_AR[parseInt(monthPart,10)-1]||'') + ' ' + yearPart;
+        msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n📊 تقرير شهر ${monthLabel}:\n`
+          + (attPct!==null ? `✅ نسبة الحضور: ${attPct}% (${presentCount}/${attM.length})\n` : '')
+          + (examsAvgVal!==null ? `📝 متوسط الامتحانات: ${examsAvgVal}%\n` : '')
+          + (starsMonth>0 ? `⭐ نجوم الشهر: ${starsMonth}\n` : '')
+          + `💰 المصروفات: ${payTxt}\n`
+          + `— ${TEACHER.name}${linkLine}`;
       }
       if(msg) rows.push({name:st.name, phone:st.parentPhone, msg});
     }
     if(!rows.length){
-      const what = (type==='attendance'||type==='payment') ? 'سجل بتاريخ اليوم ده بالظبط' : type==='exam' ? 'درجة امتحان' : 'رقم ولي أمر';
+      const what = (type==='attendance'||type==='payment') ? 'سجل بتاريخ اليوم ده بالظبط' : type==='exam' ? 'درجة امتحان' : type==='monthly' ? 'أي نشاط مسجّل في الشهر ده' : 'رقم ولي أمر';
       listEl.innerHTML = `<div class="empty">مفيش طلاب عندهم رقم ولي أمر مسجّل + ${what}</div>`;
       return;
     }
@@ -2669,7 +2722,17 @@ function sortByName(list){
   return (list||[]).slice().sort((a,b)=> (a.name||'').localeCompare((b.name||''), 'ar'));
 }
 
-function filterStudents(list, query, klass){
+function sortStudents(list, sortBy, sortDir){
+  sortBy = sortBy||'name'; sortDir = sortDir||'asc';
+  const sorted = (list||[]).slice().sort((a,b)=>{
+    if(sortBy==='code') return (a.code||'').localeCompare((b.code||''), 'en', {numeric:true});
+    return (a.name||'').localeCompare((b.name||''), 'ar');
+  });
+  if(sortDir==='desc') sorted.reverse();
+  return sorted;
+}
+
+function filterStudents(list, query, klass, sortBy, sortDir){
   list = list||[];
   let out = list;
   if(klass && normalizeClass(klass)){
@@ -2680,7 +2743,7 @@ function filterStudents(list, query, klass){
     const q = query.trim().toLowerCase();
     out = out.filter(s => (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q));
   }
-  return sortByName(out);
+  return sortStudents(out, sortBy, sortDir);
 }
 
 /* قائمة الصفوف الموجودة فعليًا عند الطلاب، بترتيب الصفوف الستة المعروفة الأول وبعدين أي صف تاني */
