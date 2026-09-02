@@ -1621,21 +1621,9 @@ async function renderTeacherPanel(skipFetch){
 
     <div class="card" id="birthdaysCard" style="display:none;"></div>
 
-    ${ riskyStudents.length ? `
-    <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
-      <div class="card-title" style="color:#D9534F;"><span class="dot" style="background:#D9534F;"></span> 🚨 طلاب تحت الملاحظة (${riskyStudents.length})</div>
-      ${riskyStudents.map(s=>`
-        <div class="student-pick">
-          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
-          <button class="btn btn-ghost btn-sm" data-edit="${s.code}">عرض التفاصيل</button>
-        </div>
-      `).join('')}
-    </div>
-    ` : '' }
-
     <div id="panelMenuWrap">
       <div class="panel-quicksearch">
-        <input type="text" id="panelQuickSearch" placeholder="🔍 دوّر على طالب بالاسم أو الكود..." autocomplete="off">
+        <input type="text" id="panelQuickSearch" placeholder="🔍 دوّر على طالب بالاسم أو الكود أو رقم الهاتف..." autocomplete="off">
         <div class="panel-quicksearch-results" id="panelQuickSearchResults"></div>
       </div>
       <div class="atm-grid">
@@ -1806,6 +1794,17 @@ async function renderTeacherPanel(skipFetch){
     </div>
 
     <div class="panel-section" data-panel="students">
+    ${ riskyStudents.length ? `
+    <div class="card" style="border:1.5px solid #D9534F;background:#FFF4F3;">
+      <div class="card-title" style="color:#D9534F;"><span class="dot" style="background:#D9534F;"></span> 🚨 طلاب تحت الملاحظة (${riskyStudents.length})</div>
+      ${riskyStudents.map(s=>`
+        <div class="student-pick">
+          <div><div class="nm">${s.name}</div><div class="meta">${s.klass||'—'}</div></div>
+          <button class="btn btn-ghost btn-sm" data-edit="${s.code}">عرض التفاصيل</button>
+        </div>
+      `).join('')}
+    </div>
+    ` : '' }
     <div class="card">
       <div class="card-title"><span class="dot"></span> الطلاب 
         <span style="font-size:13px;font-weight:500;color:var(--muted);margin-right:6px;">
@@ -1820,7 +1819,7 @@ async function renderTeacherPanel(skipFetch){
       </div>
       <div class="form-grid" style="margin-bottom:12px;">
         <div class="field" style="grid-column:1/-1;">
-          <input type="text" id="studentSearchInput" placeholder="ابحث بالاسم أو الكود..." value="${(state.studentSearch||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13.5px;color:var(--ink);">
+          <input type="text" id="studentSearchInput" placeholder="ابحث بالاسم أو الكود أو رقم الهاتف..." value="${(state.studentSearch||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px 12px;border-radius:8px;border:1.3px solid var(--line);background:var(--paper2);font-size:13.5px;color:var(--ink);">
         </div>
         <div class="field">
           <label>تصفية حسب الصف</label>
@@ -1902,9 +1901,12 @@ async function renderTeacherPanel(skipFetch){
   if(pqsInput){
     pqsInput.addEventListener('input', ()=>{
       const q = pqsInput.value.trim().toLowerCase();
+      const qDigits = pqsInput.value.replace(/\D/g,'');
       if(!q){ pqsResults.classList.remove('show'); pqsResults.innerHTML=''; return; }
       const matches = sortByName(state.index.filter(s =>
-        (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q)
+        (s.name||'').toLowerCase().includes(q) ||
+        (s.code||'').toLowerCase().includes(q) ||
+        (qDigits && (s.parentPhone||'').replace(/\D/g,'').includes(qDigits))
       )).slice(0, 8);
       if(!matches.length){
         pqsResults.innerHTML = `<div class="pqs-row" style="cursor:default;color:var(--muted);">مفيش نتائج</div>`;
@@ -2010,7 +2012,7 @@ async function renderTeacherPanel(skipFetch){
       } else {
         code = genCode(idx);
       }
-      idx.push({name, klass, code});
+      idx.push(parentPhone ? {name, klass, code, parentPhone} : {name, klass, code});
       const studentData = {name, klass, attendance:[], exams:[], payments:[]};
       if(parentPhone) studentData.parentPhone = parentPhone;
       await saveStudent(code, studentData);
@@ -2494,22 +2496,17 @@ async function renderTeacherPanel(skipFetch){
         if(!monthVal) continue;
         const attM = (st.attendance||[]).filter(a=>(a.date||'').startsWith(monthVal));
         const examsM = (st.exams||[]).filter(ex=>(ex.date||'').startsWith(monthVal));
-        const paysM = (st.payments||[]).filter(p=>(p.date||'').startsWith(monthVal));
-        if(!attM.length && !examsM.length && !paysM.length) continue;
+        if(!attM.length && !examsM.length) continue;
         const presentCount = attM.filter(a=>a.status==='present').length;
         const attPct = attM.length ? Math.round((presentCount/attM.length)*100) : null;
         const examsAvgVal = examsM.length ? Math.round(examsM.reduce((sum,e)=> sum + (Number(e.score)/Number(e.max))*100, 0)/examsM.length) : null;
         const starsMonth = examsM.reduce((sum,e)=> sum + examPoints(e.score, e.max), 0);
-        const payTxt = paysM.length
-          ? paysM.map(p=> `${p.term}: ${p.status==='paid' ? 'تم الدفع ('+p.amount+' جنيه)' : 'متبقي '+p.amount+' جنيه'}`).join('، ')
-          : 'مفيش سجل مصروفات الشهر ده';
         const [yearPart, monthPart] = monthVal.split('-');
         const monthLabel = (MONTH_NAMES_AR[parseInt(monthPart,10)-1]||'') + ' ' + yearPart;
         msg = `حضرتك ولي أمر الطالب/ة ${st.name}\n📊 تقرير شهر ${monthLabel}:\n`
           + (attPct!==null ? `✅ نسبة الحضور: ${attPct}% (${presentCount}/${attM.length})\n` : '')
           + (examsAvgVal!==null ? `📝 متوسط الامتحانات: ${examsAvgVal}%\n` : '')
           + (starsMonth>0 ? `⭐ نجوم الشهر: ${starsMonth}\n` : '')
-          + `💰 المصروفات: ${payTxt}\n`
           + `— ${TEACHER.name}${linkLine}`;
       }
       if(msg) rows.push({name:st.name, phone:st.parentPhone, msg});
@@ -2741,7 +2738,12 @@ function filterStudents(list, query, klass, sortBy, sortDir){
   }
   if(query && query.trim()){
     const q = query.trim().toLowerCase();
-    out = out.filter(s => (s.name||'').toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q));
+    const qDigits = query.replace(/\D/g,'');
+    out = out.filter(s =>
+      (s.name||'').toLowerCase().includes(q) ||
+      (s.code||'').toLowerCase().includes(q) ||
+      (qDigits && (s.parentPhone||'').replace(/\D/g,'').includes(qDigits))
+    );
   }
   return sortStudents(out, sortBy, sortDir);
 }
@@ -2866,6 +2868,7 @@ async function renderStudentEditor(){
         <div class="field"><label>تاريخ الميلاد</label><input type="date" id="editStudentBirthdate" value="${s.birthdate||''}"></div>
         <div class="field"><label>⭐ نجوم إضافية (بونص)</label><input type="number" min="0" id="editStudentBonus" value="${Number(s.bonusPoints)||0}"></div>
         <div class="field"><label>كود الطالب</label><input type="text" id="editStudentCode" value="${code}" maxlength="10" style="font-family:Cairo;font-weight:800;letter-spacing:1px;"></div>
+        <div class="field"><label>رقم هاتف ولي الأمر</label><input type="tel" id="editStudentPhone" value="${s.parentPhone||''}" placeholder="01xxxxxxxxx"></div>
         <button class="btn btn-brass btn-sm" type="submit">حفظ التعديل</button>
       </form>
       <p class="hint" style="margin:8px 0 0;text-align:right;">النجوم الإضافية بتتحسب فوق نجوم الامتحانات — استخدمها كمكافأة لأي مجهود تشوفه يستاهل (مشاركة، سلوك، تحسّن...). لو غيّرت الكود، لازم تبعت الكود الجديد لولي الأمر لأن القديم مش هيشتغل تاني.</p>
@@ -3027,6 +3030,7 @@ async function renderStudentEditor(){
     const newBirthdate = document.getElementById('editStudentBirthdate').value;
     const newBonus = Math.max(0, parseInt(document.getElementById('editStudentBonus').value)||0);
     const newCode = document.getElementById('editStudentCode').value.trim().toUpperCase();
+    const newPhone = document.getElementById('editStudentPhone').value.trim();
     if(!newName){ toast('اكتب اسم الطالب'); return; }
     if(!newCode){ toast('اكتب كود الطالب'); return; }
 
@@ -3040,12 +3044,12 @@ async function renderStudentEditor(){
         toast('الكود ده مستخدم لطالب تاني — اختار كود مختلف');
         return;
       }
-      s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus;
+      s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus; s.parentPhone = newPhone;
       await saveStudent(newCode, s);
       await dbDelete('students/'+code);
       const entry = idx.find(x=>x.code===code);
       if(entry){
-        entry.code = newCode; entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate;
+        entry.code = newCode; entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate; entry.parentPhone = newPhone;
         entry.points = totalPoints(s.exams) + newBonus;
       }
       await saveIndex(idx); state.index = idx;
@@ -3056,11 +3060,11 @@ async function renderStudentEditor(){
       return;
     }
 
-    s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus;
+    s.name = newName; s.klass = newClass; s.birthdate = newBirthdate; s.bonusPoints = newBonus; s.parentPhone = newPhone;
     await saveStudent(code, s);
     const entry = idx.find(x=>x.code===code);
     if(entry){
-      entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate;
+      entry.name = newName; entry.klass = newClass; entry.birthdate = newBirthdate; entry.parentPhone = newPhone;
       entry.points = totalPoints(s.exams) + newBonus;
       await saveIndex(idx); state.index = idx;
     }
