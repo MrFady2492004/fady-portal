@@ -2994,15 +2994,36 @@ async function renderStudentEditor(){
     <div class="card">
       <button class="btn btn-danger" id="delStudent">حذف الطالب</button>
     </div>
+
+    <div class="student-nav-bar">
+      <div class="student-nav-arrows">
+        <button class="nav-btn" id="navPrevBtnBottom" ${!prevCode?'disabled':''}>
+          ← السابق
+        </button>
+        <span class="student-nav-counter">${currentPos+1} / ${total}</span>
+        <button class="nav-btn" id="navNextBtnBottom" ${!nextCode?'disabled':''}>
+          التالي →
+        </button>
+      </div>
+      <div class="student-nav-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="studentNavSearchBottom" placeholder="ابحث عن طالب بالاسم..." autocomplete="off">
+        <div class="student-nav-results" id="studentNavResultsBottom"></div>
+      </div>
+    </div>
   `;
 
   document.getElementById('toPanel').addEventListener('click', ()=>{ state.view='teacherPanel'; render(); });
 
-  // التنقل بالأسهم
-  const prevBtn = document.getElementById('navPrevBtn');
-  const nextBtn = document.getElementById('navNextBtn');
-  if(prevBtn && !prevBtn.disabled) prevBtn.addEventListener('click', ()=>{ state.editingCode=prevCode; renderStudentEditor(); });
-  if(nextBtn && !nextBtn.disabled) nextBtn.addEventListener('click', ()=>{ state.editingCode=nextCode; renderStudentEditor(); });
+  // التنقل بالأسهم (فوق وتحت)
+  function bindNavArrows(prevId, nextId){
+    const prevBtn = document.getElementById(prevId);
+    const nextBtn = document.getElementById(nextId);
+    if(prevBtn && !prevBtn.disabled) prevBtn.addEventListener('click', ()=>{ state.editingCode=prevCode; renderStudentEditor(); });
+    if(nextBtn && !nextBtn.disabled) nextBtn.addEventListener('click', ()=>{ state.editingCode=nextCode; renderStudentEditor(); });
+  }
+  bindNavArrows('navPrevBtn', 'navNextBtn');
+  bindNavArrows('navPrevBtnBottom', 'navNextBtnBottom');
 
   // اختصارات لوحة المفاتيح
   document.addEventListener('keydown', function navKeys(e){
@@ -3011,36 +3032,40 @@ async function renderStudentEditor(){
     if(e.key==='ArrowRight'&&nextCode){ state.editingCode=nextCode; renderStudentEditor(); document.removeEventListener('keydown',navKeys); }
   });
 
-  // البحث السريع
-  const searchInput = document.getElementById('studentNavSearch');
-  const searchResults = document.getElementById('studentNavResults');
-  searchInput.addEventListener('input', ()=>{
-    const q = searchInput.value.trim();
-    if(!q){ searchResults.classList.remove('open'); return; }
-    const matches = (state.index||[]).filter(x=>(x.name||'').includes(q)||(x.code||'').toUpperCase().includes(q.toUpperCase())).slice(0,8);
-    if(!matches.length){ searchResults.innerHTML='<div class="snr-item" style="color:var(--muted);">لا توجد نتائج</div>'; searchResults.classList.add('open'); return; }
-    searchResults.innerHTML = matches.map(m=>`
-      <div class="snr-item" data-code="${m.code}">
-        <span>${m.name}</span>
-        <span class="snr-klass">${m.klass||''}</span>
-      </div>
-    `).join('');
-    searchResults.classList.add('open');
-    searchResults.querySelectorAll('.snr-item').forEach(item=>{
-      item.addEventListener('click', ()=>{
-        state.editingCode = item.dataset.code;
-        searchResults.classList.remove('open');
-        renderStudentEditor();
+  // البحث السريع (فوق وتحت)
+  function bindNavSearch(inputId, resultsId){
+    const searchInput = document.getElementById(inputId);
+    const searchResults = document.getElementById(resultsId);
+    if(!searchInput || !searchResults) return;
+    searchInput.addEventListener('input', ()=>{
+      const q = searchInput.value.trim();
+      if(!q){ searchResults.classList.remove('open'); return; }
+      const matches = (state.index||[]).filter(x=>(x.name||'').includes(q)||(x.code||'').toUpperCase().includes(q.toUpperCase())).slice(0,8);
+      if(!matches.length){ searchResults.innerHTML='<div class="snr-item" style="color:var(--muted);">لا توجد نتائج</div>'; searchResults.classList.add('open'); return; }
+      searchResults.innerHTML = matches.map(m=>`
+        <div class="snr-item" data-code="${m.code}">
+          <span>${m.name}</span>
+          <span class="snr-klass">${m.klass||''}</span>
+        </div>
+      `).join('');
+      searchResults.classList.add('open');
+      searchResults.querySelectorAll('.snr-item').forEach(item=>{
+        item.addEventListener('click', ()=>{
+          state.editingCode = item.dataset.code;
+          searchResults.classList.remove('open');
+          renderStudentEditor();
+        });
       });
     });
-  });
-  // إخفاء النتائج لما يضغط برا
-  document.addEventListener('click', function hideResults(e){
-    if(!searchResults.contains(e.target)&&e.target!==searchInput){
-      searchResults.classList.remove('open');
-      document.removeEventListener('click', hideResults);
-    }
-  });
+    // إخفاء النتائج لما يضغط برا
+    document.addEventListener('click', function hideResults(e){
+      if(!searchResults.contains(e.target)&&e.target!==searchInput){
+        searchResults.classList.remove('open');
+      }
+    });
+  }
+  bindNavSearch('studentNavSearch', 'studentNavResults');
+  bindNavSearch('studentNavSearchBottom', 'studentNavResultsBottom');
 
   document.getElementById('editInfoForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
