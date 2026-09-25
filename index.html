@@ -496,6 +496,8 @@ let attAbsentRows = [];
 /* الصفوف الستة الثابتة عشان التصنيف والتصفية تكون موحّدة */
 const CLASS_LEVELS = ['رابعة ابتدائي','خمسة ابتدائي','سادسة ابتدائي','أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
 const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+/* الوحدات الدراسية الثابتة — بتتاختار من قائمة موحّدة عشان الاختلاف في الكتابة متيجيش زي مشكلة الصفوف قبل كده */
+const EXAM_UNITS = ['الوحدة الأولى','الوحدة الثانية','الوحدة الثالثة','الوحدة الرابعة','الوحدة الخامسة','الوحدة السادسة'];
 
 /* توحيد كتابة اسم الصف (بيشيل المسافات الزيادة جوه الاسم) عشان الفلترة والعدّ يبقوا مظبوطين
    حتى لو المعلم كتب الصف بمسافات مختلفة كل مرة */
@@ -684,6 +686,15 @@ function cacheGet(key){
 }
 function cacheDelete(key){ try{ localStorage.removeItem(CACHE_PREFIX+key); }catch(e){} }
 function cacheClear(){ try{ Object.keys(localStorage).filter(k=>k.startsWith(CACHE_PREFIX)).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+
+/* تفضيلات بسيطة بتتحفظ في المتصفح من غير فترة صلاحية (زي آخر وحدة تم اختيارها) */
+function prefSet(key, value){ try{ localStorage.setItem(CACHE_PREFIX+'pref_'+key, JSON.stringify(value)); }catch(e){} }
+function prefGet(key, fallback){
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX+'pref_'+key);
+    return raw!==null ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
 
 async function dbGet(path){
   try{
@@ -978,7 +989,7 @@ function examsChartSVG(exams){
     return `<div class="empty">سجّل امتحانين على الأقل عشان يظهر الرسم البياني</div>`;
   }
   const recent = exams.slice(-12);
-  const W = 600, H = 170, padL = 32, padR = 14, padT = 16, padB = 30;
+  const W = 600, H = 190, padL = 32, padR = 14, padT = 16, padB = 34;
   const innerW = W - padL - padR, innerH = H - padT - padB;
   const pts = recent.map(e => Math.max(0, Math.min(100, Math.round((Number(e.score)/Number(e.max))*100))));
   const n = pts.length;
@@ -988,8 +999,20 @@ function examsChartSVG(exams){
     const y = padT + innerH - (p/100)*innerH;
     return [x,y];
   });
-  const pathD = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-  const areaD = pathD + ` L${coords[n-1][0].toFixed(1)},${(padT+innerH).toFixed(1)} L${coords[0][0].toFixed(1)},${(padT+innerH).toFixed(1)} Z`;
+  // خط منحني ناعم (سلاسة بين النقاط) بدل الخطوط المستقيمة
+  function smoothPath(coords){
+    if(coords.length<2) return '';
+    let d = `M${coords[0][0].toFixed(1)},${coords[0][1].toFixed(1)}`;
+    for(let i=0;i<coords.length-1;i++){
+      const [x0,y0]=coords[i], [x1,y1]=coords[i+1];
+      const mx=(x0+x1)/2;
+      d += ` C${mx.toFixed(1)},${y0.toFixed(1)} ${mx.toFixed(1)},${y1.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+    }
+    return d;
+  }
+  const pathD = smoothPath(coords);
+  const baseY = (padT+innerH).toFixed(1);
+  const areaD = pathD + ` L${coords[n-1][0].toFixed(1)},${baseY} L${coords[0][0].toFixed(1)},${baseY} Z`;
   const gridVals = [0,50,100];
   const gridLines = gridVals.map(v=>{
     const y = padT+innerH-(v/100)*innerH;
@@ -999,18 +1022,24 @@ function examsChartSVG(exams){
   const dots = coords.map((c,i)=>{
     const pct = pts[i];
     const color = pct>=75?'var(--good)':'var(--warn)';
-    return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-            <text x="${c[0].toFixed(1)}" y="${(c[1]-9).toFixed(1)}" font-size="9.5" font-weight="800" fill="var(--ink)" text-anchor="middle">${pct}%</text>`;
+    return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="#fff" stroke="${color}" stroke-width="2.5"/>
+            <text x="${c[0].toFixed(1)}" y="${(c[1]-10).toFixed(1)}" font-size="9.5" font-weight="800" fill="var(--ink)" text-anchor="middle">${pct}%</text>`;
   }).join('');
   const labels = recent.map((e,i)=>{
     const x = coords[i][0];
-    const lbl = (e.name||'').length>7 ? (e.name||'').slice(0,6)+'…' : (e.name||'');
+    const lbl = e.date ? fmtDate(e.date).slice(0,5) : ((e.name||'').length>7 ? (e.name||'').slice(0,6)+'…' : (e.name||''));
     return `<text x="${x.toFixed(1)}" y="${H-8}" font-size="9" fill="var(--muted)" text-anchor="middle">${lbl}</text>`;
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin:4px 0 16px;">
+    <defs>
+      <linearGradient id="examAreaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--brass)" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="var(--brass)" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>
     ${gridLines}
-    <path d="${areaD}" fill="var(--brass-light)" opacity="0.18"/>
-    <path d="${pathD}" fill="none" stroke="var(--brass)" stroke-width="2.5"/>
+    <path d="${areaD}" fill="url(#examAreaGrad)"/>
+    <path d="${pathD}" fill="none" stroke="var(--brass)" stroke-width="2.75" stroke-linecap="round"/>
     ${dots}
     ${labels}
   </svg>`;
@@ -1376,9 +1405,9 @@ function renderReport(){
       <div class="card-title"><span class="dot"></span> الامتحانات</div>
       ${examsChartSVG(s.exams)}
       ${ (s.exams&&s.exams.length) ? `
-        <table><thead><tr><th>الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقييم</th></tr></thead>
+        <table><thead><tr><th>الوحدة</th><th>الدرس / الامتحان</th><th>التاريخ</th><th>الدرجة</th><th>التقييم</th></tr></thead>
         <tbody>
-        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td><td>${examStars(e.score,e.max) || '<span class="meta">—</span>'}</td></tr>`).join('')}
+        ${s.exams.slice().reverse().map(e=>`<tr><td>${e.unit||'—'}</td><td>${e.name}</td><td>${fmtDate(e.date)}</td><td>${e.score} / ${e.max}</td><td>${examStars(e.score,e.max) || '<span class="meta">—</span>'}</td></tr>`).join('')}
         </tbody></table>
         <div class="row" style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;">
           <span class="meta">إجمالي نقاط الطالب</span>
@@ -1699,7 +1728,8 @@ async function renderTeacherPanel(skipFetch){
             ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>اسم الامتحان</label><input type="text" id="quickGradeExamName" placeholder="مثال: امتحان أبريل"></div>
+        <div class="field"><label>الوحدة</label><select id="quickGradeUnit">${EXAM_UNITS.map(u=>`<option value="${u}" ${u===prefGet('lastUnit',EXAM_UNITS[0])?'selected':''}>${u}</option>`).join('')}</select></div>
+        <div class="field"><label>اسم الدرس / الامتحان</label><input type="text" id="quickGradeExamName" placeholder="مثال: درس الطقس والمناخ"></div>
         <div class="field"><label>الدرجة الكاملة</label><input type="number" id="quickGradeMax" value="100" min="1"></div>
         <div class="field"><label>التاريخ</label><input type="date" id="quickGradeDate" value="${new Date().toISOString().split('T')[0]}"></div>
       </div>
@@ -2137,6 +2167,8 @@ async function renderTeacherPanel(skipFetch){
     // حفظ الكل
     document.getElementById('quickGradeSaveBtn').addEventListener('click', async ()=>{
       const inputs = wrap.querySelectorAll('.qg-score-input');
+      const unitVal = document.getElementById('quickGradeUnit').value;
+      prefSet('lastUnit', unitVal);
       const examName2 = document.getElementById('quickGradeExamName').value.trim();
       const examDate = document.getElementById('quickGradeDate').value;
       const examMax = document.getElementById('quickGradeMax').value||'100';
@@ -2151,7 +2183,7 @@ async function renderTeacherPanel(skipFetch){
         const st = await getStudent(code);
         if(!st) continue;
         st.exams = st.exams||[];
-        st.exams.push({name:examName2, date:examDate, score:val, max:examMax});
+        st.exams.push({unit:unitVal, name:examName2, date:examDate, score:val, max:examMax});
         await saveStudent(code, st);
         changes[code] = { points: totalPoints(st.exams) + (Number(st.bonusPoints)||0), risk: riskStatus(st).atRisk };
         inp.classList.add('filled'); inp.disabled=true;
@@ -2959,7 +2991,8 @@ async function renderStudentEditor(){
     <div class="card">
       <div class="card-title"><span class="dot"></span> إضافة درجة امتحان</div>
       <form id="examForm" class="form-grid">
-        <div class="field"><label>اسم الامتحان</label><input type="text" id="examName" placeholder="مثال: شهر فبراير" required></div>
+        <div class="field"><label>الوحدة</label><select id="examUnit">${EXAM_UNITS.map(u=>`<option value="${u}" ${u===prefGet('lastUnit',EXAM_UNITS[0])?'selected':''}>${u}</option>`).join('')}</select></div>
+        <div class="field"><label>اسم الدرس / الامتحان</label><input type="text" id="examName" placeholder="مثال: درس الطقس والمناخ" required></div>
         <div class="field"><label>التاريخ</label><input type="date" id="examDate" value="${new Date().toISOString().split('T')[0]}"></div>
         <div class="field"><label>الدرجة</label><input type="number" id="examScore" required></div>
         <div class="field"><label>من</label><input type="number" id="examMax" value="100" required></div>
@@ -2969,7 +3002,7 @@ async function renderStudentEditor(){
       ${examsChartSVG(s.exams)}
       ${ (s.exams&&s.exams.length) ? s.exams.slice().reverse().map((e,ri)=>{
           const i = s.exams.length-1-ri;
-          return `<div class="row"><span>${e.name} <span class="meta">— ${fmtDate(e.date)}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><span>${examStars(e.score,e.max)}</span><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
+          return `<div class="row"><span>${e.unit?`<span class="meta" style="color:var(--brass);font-weight:700;">${e.unit}</span> — `:''}${e.name} <span class="meta">— ${fmtDate(e.date)}</span></span><span style="display:flex;align-items:center;gap:8px;"><strong>${e.score}/${e.max}</strong><span>${examStars(e.score,e.max)}</span><button class="btn btn-ghost btn-sm" data-del-exam="${i}">حذف</button></span></div>`;
         }).join('') : `<div class="empty">لا يوجد امتحانات بعد</div>` }
     </div>
 
@@ -3186,24 +3219,27 @@ async function renderStudentEditor(){
 
   document.getElementById('examForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
+    const unit = document.getElementById('examUnit').value;
+    prefSet('lastUnit', unit);
     const name = document.getElementById('examName').value.trim();
     const date = document.getElementById('examDate').value;
     const score = document.getElementById('examScore').value;
     const max = document.getElementById('examMax').value;
     if(!name||score===''||max==='') return;
-    s.exams = s.exams||[]; s.exams.push({name,date,score,max});
-    addLog(s, `أضاف درجة ${name}: ${score} من ${max}`);
+    s.exams = s.exams||[]; s.exams.push({unit,name,date,score,max});
+    addLog(s, `أضاف درجة ${unit} — ${name}: ${score} من ${max}`);
     await saveStudent(code, s); await syncStudentPoints(code, s.exams, s.bonusPoints); await syncStudentRisk(code, s);
     toast('✅ تم حفظ الدرجة');
     renderStudentEditor();
   });
   document.getElementById('waExamBtn').addEventListener('click', ()=>{
     if(!s.parentPhone){ toast('سجّل رقم ولي الأمر الأول من فوق'); return; }
+    const unit = document.getElementById('examUnit').value;
     const name = document.getElementById('examName').value.trim() || 'الامتحان';
     const score = document.getElementById('examScore').value;
     const max = document.getElementById('examMax').value || '100';
     if(score===''){ toast('اكتب الدرجة الأول'); return; }
-    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nالطالب جاب في ${name}: ${score} من ${max}.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${link}`;
+    const msg = `حضرتك ولي أمر الطالب/ة ${s.name}\nالطالب جاب في ${unit} — ${name}: ${score} من ${max}.\n— ${TEACHER.name}\n\nيمكنك متابعة مستوى ابنك من خلال اللينك الاتي :\n${link}`;
     const waLinkUrl = waLink(s.parentPhone, msg);
     if(waLinkUrl) window.open(waLinkUrl, '_blank');
   });
