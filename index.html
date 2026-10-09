@@ -209,6 +209,15 @@
   .pqs-row .nm{font-weight:700;font-size:13.5px;}
   .pqs-row .meta{font-size:12px;color:var(--muted);}
 
+  .gallery-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  @media(min-width:560px){.gallery-grid{grid-template-columns:repeat(3,1fr);}}
+  .gallery-item{margin:0;text-align:center;}
+  .gallery-item.clickable{cursor:pointer;}
+  .gallery-item img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:2px solid var(--line);display:block;background:var(--paper2);}
+  .gallery-item figcaption{font-size:12.5px;font-weight:700;margin-top:6px;line-height:1.35;}
+  .gallery-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;cursor:zoom-out;}
+  .gallery-lightbox img{max-width:100%;max-height:80vh;border-radius:12px;}
+  .gallery-lightbox .gl-cap{color:#fff;margin-top:12px;font-weight:700;text-align:center;font-size:15px;}
   .pay-grid-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh;overflow-y:auto;}
   .pay-grid{border-collapse:collapse;width:max-content;min-width:100%;font-size:13px;}
   .pay-grid th,.pay-grid td{border:1px solid var(--line);padding:9px 6px;text-align:center;white-space:nowrap;}
@@ -1249,6 +1258,53 @@ function topStudentsHTML(idx){
   `;
 }
 
+/* ===== معرض التكريم (الصفحة الرئيسية) ===== */
+const GALLERY_LIMIT = 12;
+function escapeHTML(str){
+  return String(str==null?'':str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+/* بنجيب أحدث الصور بس (مش كل الصور) عشان الصفحة الرئيسية تفضل سريعة */
+async function galleryFetch(limit){
+  try{
+    const r = await fetch(DB_URL + '/gallery.json?orderBy=%22%24key%22&limitToLast=' + (limit||GALLERY_LIMIT));
+    if(!r.ok) return null;
+    const obj = await r.json();
+    if(!obj) return [];
+    return Object.keys(obj).sort().reverse().map(k=>({id:k, photo:obj[k].photo, caption:obj[k].caption||'', date:obj[k].date||''}));
+  }catch(e){ return null; }
+}
+function galleryHTML(items){
+  if(!items || !items.length) return '';
+  return `
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> 🏅 لحظات التكريم</div>
+      <div class="gallery-grid">
+        ${items.map(g=>`
+          <figure class="gallery-item clickable" data-gid="${escapeHTML(g.id)}">
+            <img src="${g.photo}" alt="${escapeHTML(g.caption||'تكريم')}" loading="lazy">
+            ${g.caption ? `<figcaption>${escapeHTML(g.caption)}</figcaption>` : ''}
+          </figure>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+function openGalleryLightbox(src, caption){
+  const box = document.createElement('div');
+  box.className = 'gallery-lightbox';
+  box.innerHTML = `<img src="${src}" alt=""><div class="gl-cap">${escapeHTML(caption||'')}</div>`;
+  box.addEventListener('click', ()=> box.remove());
+  document.body.appendChild(box);
+}
+function bindGallery(slot, items){
+  slot.querySelectorAll('.gallery-item.clickable').forEach(fig=>{
+    fig.addEventListener('click', ()=>{
+      const g = (items||[]).find(x=>x.id===fig.dataset.gid);
+      if(g) openGalleryLightbox(g.photo, g.caption);
+    });
+  });
+}
+
 async function renderHome(){
   // نعرض الصفحة فورًا من غير ما ننتظر الشبكة
   $app.innerHTML = `
@@ -1265,6 +1321,7 @@ async function renderHome(){
       <div class="hint">الكود بيتسلّم من ${TEACHER.name} لكل طالب على حدة (5 حروف/أرقام)</div>
     </div>
     <div id="topStudentsSlot"></div>
+    <div id="gallerySlot"></div>
     <div class="footer-link" id="teacherLink">مستر فادي فرح</div>
   `;
   document.getElementById('codeForm').addEventListener('submit', async (e)=>{
@@ -1281,6 +1338,21 @@ async function renderHome(){
   if(cached && cached.length && topSlot){
     topSlot.innerHTML = topStudentsHTML(cached);
   }
+  // معرض التكريم: بيتعرض من الكاش فورًا لو موجود، وبعدين بيتحدّث في الخلفية من غير ما يوقف الصفحة
+  const gallerySlot = document.getElementById('gallerySlot');
+  const cachedGallery = cacheGet('gallery');
+  if(cachedGallery && cachedGallery.length && gallerySlot){
+    gallerySlot.innerHTML = galleryHTML(cachedGallery);
+    bindGallery(gallerySlot, cachedGallery);
+  }
+  galleryFetch().then(items=>{
+    const slot = document.getElementById('gallerySlot');
+    if(!slot || items===null) return;
+    cacheSet('gallery', items);
+    slot.innerHTML = galleryHTML(items);
+    bindGallery(slot, items);
+  });
+
   const idx = await getIndex();
   const currentSlot = document.getElementById('topStudentsSlot');
   if(currentSlot){ currentSlot.innerHTML = topStudentsHTML(idx); }
@@ -1685,6 +1757,7 @@ async function renderTeacherPanel(skipFetch){
         <div class="atm-tile" data-panel="grades" style="--tile-accent:#1565C0;"><span class="atm-icon">📝</span><span class="atm-label">رصد الدرجات</span></div>
         <div class="atm-tile" data-panel="attendance" style="--tile-accent:#00838F;"><span class="atm-icon">✅</span><span class="atm-label">الحضور والغياب</span></div>
         <div class="atm-tile" data-panel="wheel" style="--tile-accent:#7B1FA2;"><span class="atm-icon">🎡</span><span class="atm-label">عجلة الحظ</span></div>
+        <div class="atm-tile" data-panel="gallery" style="--tile-accent:#AD1457;"><span class="atm-icon">🏅</span><span class="atm-label">معرض التكريم</span></div>
         <div class="atm-tile" data-panel="payments" style="--tile-accent:#B8860B;"><span class="atm-icon">💰</span><span class="atm-label">تسجيل المصروفات</span></div>
         <div class="atm-tile" data-panel="whatsapp" style="--tile-accent:#25D366;"><span class="atm-icon">📤</span><span class="atm-label">رسائل واتساب</span></div>
         <div class="atm-tile" data-panel="students" style="--tile-accent:#3949AB;"><span class="atm-icon">👥</span><span class="atm-label">كل الطلاب</span></div>
@@ -1807,6 +1880,19 @@ async function renderTeacherPanel(skipFetch){
         <div class="field"><label>تاريخ التسجيل</label><input type="date" id="payGridDate" value="${new Date().toISOString().split('T')[0]}"></div>
       </div>
       <div id="payGridWrap"></div>
+    </div>
+    </div>
+
+    <div class="panel-section" data-panel="gallery">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> 🏅 معرض التكريم</div>
+      <p class="hint" style="margin:0 0 12px;text-align:right;">الصور اللي بترفعها هنا بتظهر في الصفحة الرئيسية للناس كلها (آخر ${GALLERY_LIMIT} صورة). الصورة بتتصغّر تلقائي قبل الحفظ عشان الموقع يفضل سريع.</p>
+      <div class="form-grid" style="margin-bottom:12px;">
+        <div class="field"><label>الصورة</label><input type="file" id="galleryFile" accept="image/*"></div>
+        <div class="field"><label>تعليق (اختياري)</label><input type="text" id="galleryCaption" maxlength="80" placeholder="مثال: تكريم المتفوقين — أكتوبر"></div>
+      </div>
+      <button class="btn btn-brass btn-sm" id="galleryUploadBtn">⬆️ رفع الصورة</button>
+      <div id="galleryAdminList" style="margin-top:14px;"></div>
     </div>
     </div>
 
@@ -1937,6 +2023,7 @@ async function renderTeacherPanel(skipFetch){
     if(target) target.classList.add('active');
     document.getElementById('toHome').textContent = '→ رجوع للقائمة';
     window.scrollTo({top:0, behavior:'instant'});
+    if(id==='gallery') renderGalleryAdmin();
   }
   function showPanelMenu(){
     state.panelSection = null;
@@ -2210,6 +2297,50 @@ async function renderTeacherPanel(skipFetch){
   });
 
   // ===== دفع جماعي =====
+  // ===== معرض التكريم (إدارة الصور) =====
+  async function renderGalleryAdmin(){
+    const wrap = document.getElementById('galleryAdminList');
+    if(!wrap) return;
+    wrap.innerHTML = '<div class="empty">جاري تحميل الصور...</div>';
+    const items = await galleryFetch(30);
+    if(items===null){ wrap.innerHTML = '<div class="empty">تعذّر تحميل الصور — اتأكد من الإنترنت</div>'; return; }
+    if(!items.length){ wrap.innerHTML = '<div class="empty">لسه مفيش صور مرفوعة</div>'; return; }
+    wrap.innerHTML = `<div class="gallery-grid">${items.map(g=>`
+      <figure class="gallery-item">
+        <img src="${g.photo}" alt="" loading="lazy">
+        ${g.caption ? `<figcaption>${escapeHTML(g.caption)}</figcaption>` : ''}
+        <button class="btn btn-danger btn-sm" data-del-gallery="${escapeHTML(g.id)}" style="margin-top:6px;width:100%;">🗑️ حذف</button>
+      </figure>`).join('')}</div>`;
+    wrap.querySelectorAll('[data-del-gallery]').forEach(b=>b.addEventListener('click', async ()=>{
+      if(!confirm('متأكد إنك عايز تمسح الصورة دي من الصفحة الرئيسية؟')) return;
+      showLoading('جاري الحذف...');
+      const ok = await dbDelete('gallery/'+b.dataset.delGallery);
+      hideLoading();
+      cacheDelete('gallery');
+      toast(ok ? '🗑️ تم حذف الصورة' : 'حصل خطأ في الحذف — جرّب تاني');
+      renderGalleryAdmin();
+    }));
+  }
+  document.getElementById('galleryUploadBtn').addEventListener('click', async ()=>{
+    const f = document.getElementById('galleryFile').files[0];
+    if(!f){ toast('اختار صورة الأول'); return; }
+    if(!f.type.startsWith('image/')){ toast('اختار ملف صورة صحيح'); return; }
+    const caption = document.getElementById('galleryCaption').value.trim();
+    showLoading('جاري رفع الصورة...');
+    try{
+      const photo = await compressImageFile(f, 800, 0.7);
+      const key = 't' + Date.now();
+      const ok = await dbSet('gallery/'+key, { photo, caption, date: new Date().toISOString().split('T')[0] });
+      hideLoading();
+      if(!ok){ toast('حصل خطأ في الرفع — اتأكد من الإنترنت'); return; }
+      cacheDelete('gallery');
+      document.getElementById('galleryFile').value = '';
+      document.getElementById('galleryCaption').value = '';
+      toast('✅ الصورة اتضافت للصفحة الرئيسية');
+      renderGalleryAdmin();
+    }catch(err){ hideLoading(); toast('تعذّر قراءة الصورة — جرّب صورة تانية'); }
+  });
+
   // ===== جدول المصروفات الشهري (طلاب × شهور) =====
   let payGridToken = 0;
   async function renderPayGrid(klass){
