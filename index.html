@@ -209,6 +209,21 @@
   .pqs-row .nm{font-weight:700;font-size:13.5px;}
   .pqs-row .meta{font-size:12px;color:var(--muted);}
 
+  .pay-grid-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh;overflow-y:auto;}
+  .pay-grid{border-collapse:collapse;width:max-content;min-width:100%;font-size:13px;}
+  .pay-grid th,.pay-grid td{border:1px solid var(--line);padding:9px 6px;text-align:center;white-space:nowrap;}
+  .pay-grid thead th{background:var(--paper2);font-weight:800;position:sticky;top:0;z-index:2;}
+  .pay-grid th.pg-col{cursor:pointer;}
+  .pay-grid th.pg-col:hover{background:#E8EBE2;}
+  .pay-grid .pg-name{position:sticky;right:0;background:var(--paper);text-align:right;font-weight:700;min-width:140px;z-index:1;}
+  .pay-grid thead .pg-name{background:var(--paper2);z-index:3;}
+  .pg-cell{min-width:56px;font-weight:900;font-size:17px;}
+  .pg-cell.open{cursor:pointer;color:transparent;}
+  .pg-cell.open:hover{background:var(--paper2);}
+  .pg-cell.pending{background:#FFF3D6;color:var(--brass);box-shadow:inset 0 0 0 2px var(--brass);}
+  .pg-cell.paid{background:#E6F2EB;color:var(--good);cursor:not-allowed;}
+  .pg-cell.paid small{font-size:9px;display:block;line-height:1;opacity:.75;}
+
   .toast{
     position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     background:var(--ink);color:#fff;padding:11px 20px;border-radius:30px;
@@ -498,6 +513,8 @@ const CLASS_LEVELS = ['رابعة ابتدائي','خمسة ابتدائي','س�
 const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 /* الوحدات الدراسية الثابتة — بتتاختار من قائمة موحّدة عشان الاختلاف في الكتابة متيجيش زي مشكلة الصفوف قبل كده */
 const EXAM_UNITS = ['الوحدة الأولى','الوحدة الثانية','الوحدة الثالثة','الوحدة الرابعة','الوحدة الخامسة','الوحدة السادسة'];
+/* بنود جدول المصروفات (زي ورقة الوورد): الورق + الشهور — الاسم ثابت عشان المطابقة تكون دقيقة */
+const PAY_ITEMS = ['الورق','شهر 8','شهر 9','شهر 10','شهر 11','شهر 12','شهر 1','شهر 2','شهر 3','شهر 4','شهر 5','شهر 6'];
 
 /* توحيد كتابة اسم الصف (بيشيل المسافات الزيادة جوه الاسم) عشان الفلترة والعدّ يبقوا مظبوطين
    حتى لو المعلم كتب الصف بمسافات مختلفة كل مرة */
@@ -1447,17 +1464,6 @@ function renderReport(){
       }
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> 🕐 سجل آخر التحديثات</div>
-      ${ (s.log&&s.log.length) ?
-        s.log.slice(0,10).map(l=>`
-          <div class="row" style="align-items:flex-start;gap:10px;">
-            <span style="font-size:13.5px;">${l.msg}</span>
-            <span class="meta" style="white-space:nowrap;flex-shrink:0;font-size:12px;">${l.dateStr}<br>${l.timeStr}</span>
-          </div>
-        `).join('') : `<div class="empty">لا يوجد تحديثات مسجّلة بعد</div>`
-      }
-    </div>
   `;
   // بطاقة النجوم لولي الأمر
   (()=>{
@@ -1785,21 +1791,22 @@ async function renderTeacherPanel(skipFetch){
 
     <div class="panel-section" data-panel="payments">
     <div class="card">
-      <div class="card-title"><span class="dot"></span> 💰 تسجيل دفع الفصل — جدول سريع</div>
-      <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل، هيظهرلك كل طلابه — تقدر تسجل دفع لكل واحد في نفس الوقت.</p>
+      <div class="card-title"><span class="dot"></span> 💰 جدول المصروفات الشهري</div>
+      <p class="hint" style="margin:0 0 12px;text-align:right;">اختار الفصل، علّم بـ (+) على الشهور اللي الطالب دفعها، واحفظ مرة واحدة. أي شهر اتحفظ قبل كده بيتجمّد 🔒 ومينفعش يتعدّل من هنا. اضغط على اسم الشهر فوق عشان تعلّم الكل مرة واحدة.</p>
       <div class="form-grid" style="margin-bottom:12px;">
         <div class="field">
           <label>الفصل</label>
-          <select id="payBulkClass">
+          <select id="payGridClass">
             <option value="">اختار الفصل</option>
+            <option value="__ALL__">كل الطلاب (${state.index.length})</option>
             ${classOptionsFromIndex(state.index).map(c=>`<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>التاريخ</label><input type="date" id="payBulkDate" value="${new Date().toISOString().split('T')[0]}"></div>
-        <div class="field"><label>المبلغ الافتراضي (جنيه)</label><input type="number" id="payBulkAmount" value="200" min="0"></div>
+        <div class="field"><label>سعر الشهر (جنيه)</label><input type="number" id="payGridMonthAmt" min="0" value="${prefGet('payMonthAmt',200)}"></div>
+        <div class="field"><label>سعر الورق (جنيه)</label><input type="number" id="payGridPaperAmt" min="0" value="${prefGet('payPaperAmt','')}" placeholder="مثال: 50"></div>
+        <div class="field"><label>تاريخ التسجيل</label><input type="date" id="payGridDate" value="${new Date().toISOString().split('T')[0]}"></div>
       </div>
-      <button class="btn btn-brass btn-sm" id="payBulkLoadBtn">💳 تحميل الطلاب</button>
-      <div id="payBulkTableWrap" style="margin-top:14px;"></div>
+      <div id="payGridWrap"></div>
     </div>
     </div>
 
@@ -2203,124 +2210,102 @@ async function renderTeacherPanel(skipFetch){
   });
 
   // ===== دفع جماعي =====
-  document.getElementById('payBulkLoadBtn').addEventListener('click', async ()=>{
-    const klass = document.getElementById('payBulkClass').value;
-    const defAmount = document.getElementById('payBulkAmount').value||'200';
-    const date = document.getElementById('payBulkDate').value;
-    const monthStr = date.substring(0,7);
-    if(!klass){ toast('اختار الفصل الأول'); return; }
-    const students = sortByName(state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass)));
-    if(!students.length){ toast('مفيش طلاب في الفصل ده'); return; }
-    showLoading('جاري تحميل بيانات الدفع...');
-    const studentsData = await Promise.all(students.map(s=>getStudent(s.code)));
+  // ===== جدول المصروفات الشهري (طلاب × شهور) =====
+  let payGridToken = 0;
+  async function renderPayGrid(klass){
+    const wrap = document.getElementById('payGridWrap');
+    const myToken = ++payGridToken;
+    if(!klass){ wrap.innerHTML=''; return; }
+    const students = sortByName(klass==='__ALL__' ? state.index : state.index.filter(s=>normalizeClass(s.klass)===normalizeClass(klass)));
+    if(!students.length){ wrap.innerHTML = '<div class="empty">مفيش طلاب في الصف ده</div>'; return; }
+    showLoading('جاري تحميل المصروفات...');
+    const data = await Promise.all(students.map(s=>getStudent(s.code)));
     hideLoading();
-
-    const wrap = document.getElementById('payBulkTableWrap');
+    if(myToken !== payGridToken) return; // المستخدم غيّر الفصل في الأثناء
+    const paidSets = data.map(st=>{
+      const set = new Set();
+      ((st&&st.payments)||[]).forEach(p=>{ if(p.status==='paid' && p.term) set.add(p.term); });
+      return set;
+    });
     wrap.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="qg-table">
-          <thead>
-            <tr>
-              <th style="width:32px;">#</th>
-              <th>اسم الطالب</th>
-              <th style="width:90px;">دفع الشهر ده</th>
-              <th style="width:80px;">المطلوب</th>
-              <th style="width:80px;">المتبقي</th>
-              <th style="width:100px;">مبلغ جديد</th>
-              <th style="width:90px;">نوع الدفع</th>
-              <th style="width:60px;">حفظ</th>
-            </tr>
-          </thead>
+      <div class="pay-grid-scroll">
+        <table class="pay-grid">
+          <thead><tr>
+            <th class="pg-name">الاسم</th>
+            ${PAY_ITEMS.map(it=>`<th class="pg-col" data-term="${it}" title="اضغط لتعليم الكل">${it}</th>`).join('')}
+          </tr></thead>
           <tbody>
-            ${students.map((s,i)=>{
-              const st = studentsData[i];
-              const paid = (st&&st.payments||[])
-                .filter(p=> (p.date||'').substring(0,7)===monthStr)
-                .reduce((sum,p)=>sum+Number(p.amount||0), 0);
-              const required = Number(defAmount);
-              const remaining = Math.max(0, required - paid);
-              const done = remaining === 0;
-              return `<tr id="payrow-${s.code}" style="${done?'opacity:.5;':''}">
-                <td style="color:var(--muted);font-size:12px;">${i+1}</td>
-                <td style="font-weight:600;">${s.name}</td>
-                <td style="color:${paid>0?'var(--good)':'var(--muted)'};font-weight:700;">${paid > 0 ? paid+' ج' : '—'}</td>
-                <td style="color:var(--muted);">${required} ج</td>
-                <td style="color:${done?'var(--good)':'var(--warn)'};font-weight:700;">${done?'✅ خلّص':remaining+' ج'}</td>
-                <td>${done?'<span style="font-size:12px;color:var(--good);">مكتمل</span>':`<input class="qg-score-input pay-amount-input" type="number" min="0" value="${remaining}" data-code="${s.code}" style="width:75px;">`}</td>
-                <td>${done?'—':`<select class="pay-type-select" data-code="${s.code}" style="padding:5px 6px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;font-family:inherit;background:var(--card);color:var(--ink);">
-                  <option value="شهري">شهري</option>
-                  <option value="كتب">كتب</option>
-                  <option value="نشاط">نشاط</option>
-                  <option value="أخرى">أخرى</option>
-                </select>`}</td>
-                <td>${done?'—':`<button class="btn btn-brass btn-sm pay-single-btn" data-code="${s.code}" style="padding:5px 8px;font-size:12px;">💾</button>`}</td>
-              </tr>`;
-            }).join('')}
+            ${students.map((s,i)=>`<tr>
+              <td class="pg-name">${i+1}. ${s.name}</td>
+              ${PAY_ITEMS.map(it=> paidSets[i].has(it)
+                ? `<td class="pg-cell paid" title="مدفوع — متجمّد">+<small>🔒</small></td>`
+                : `<td class="pg-cell open" data-code="${s.code}" data-term="${it}">+</td>`
+              ).join('')}
+            </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      <div class="qg-save-bar">
-        <button class="btn btn-brass btn-sm" id="payBulkSaveAllBtn">💾 حفظ الكل (اللي ناقصين بس)</button>
-        <span class="qg-counter">
-          <strong style="color:var(--good);">${students.filter((_,i)=>{
-            const st=studentsData[i]; const paid=(st&&st.payments||[]).filter(p=>(p.date||'').substring(0,7)===monthStr).reduce((s,p)=>s+Number(p.amount||0),0);
-            return paid>=Number(defAmount);
-          }).length}</strong> خلّصوا &nbsp;|&nbsp;
-          <strong style="color:var(--warn);">${students.filter((_,i)=>{
-            const st=studentsData[i]; const paid=(st&&st.payments||[]).filter(p=>(p.date||'').substring(0,7)===monthStr).reduce((s,p)=>s+Number(p.amount||0),0);
-            return paid<Number(defAmount);
-          }).length}</strong> لسه
-        </span>
+      <div class="qg-save-bar" style="margin-top:12px;">
+        <button class="btn btn-brass btn-sm" id="payGridSaveBtn">💾 حفظ العلامات الجديدة</button>
+        <span class="qg-counter" id="payGridCounter">لسه مفيش علامات جديدة</span>
       </div>
     `;
-
-    wrap.querySelectorAll('tbody tr').forEach((r,i)=>{
-      r.style.opacity=r.style.opacity||'0'; r.style.transform='translateY(8px)';
-      setTimeout(()=>{ r.style.transition='all .2s'; r.style.opacity=r.dataset.done?'.5':'1'; r.style.transform='none'; }, i*25);
+    const counter = document.getElementById('payGridCounter');
+    function updateCounter(){
+      const n = wrap.querySelectorAll('.pg-cell.pending').length;
+      counter.textContent = n ? `${n} علامة جديدة مستنية الحفظ` : 'لسه مفيش علامات جديدة';
+    }
+    wrap.querySelectorAll('.pg-cell.open').forEach(cell=>{
+      cell.addEventListener('click', ()=>{ cell.classList.toggle('pending'); updateCounter(); });
     });
-
-    wrap.querySelectorAll('.pay-single-btn').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const code2 = btn.dataset.code;
-        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${code2}"]`);
-        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${code2}"]`);
-        const amount = amountEl?.value.trim();
-        if(!amount||amount==='0'){ toast('ادخل مبلغ'); return; }
-        const st = await getStudent(code2);
-        if(!st) return;
-        st.payments = st.payments||[];
-        st.payments.push({amount, type:typeEl?.value||'شهري', date, note:''});
-        await saveStudent(code2, st);
-        const row = document.getElementById(`payrow-${code2}`);
-        if(row){ row.style.background='#E6F2EB'; row.style.opacity='.6'; }
-        btn.textContent='✅'; btn.disabled=true;
-        toast('تم حفظ دفعة '+( state.index.find(x=>x.code===code2)?.name||''));
+    // الضغط على اسم الشهر يعلّم/يشيل علامة الكل (اللي لسه مدفعوش بس)
+    wrap.querySelectorAll('th.pg-col').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const cells = [...wrap.querySelectorAll(`.pg-cell.open[data-term="${th.dataset.term}"]`)];
+        if(!cells.length) return;
+        const allOn = cells.every(c=>c.classList.contains('pending'));
+        cells.forEach(c=>c.classList.toggle('pending', !allOn));
+        updateCounter();
       });
     });
-
-    document.getElementById('payBulkSaveAllBtn').addEventListener('click', async ()=>{
-      const saveBtn = document.getElementById('payBulkSaveAllBtn');
-      saveBtn.textContent='⏳ جاري الحفظ...'; saveBtn.disabled=true;
-      let saved=0;
-      for(const s of students){
-        const amountEl = wrap.querySelector(`.pay-amount-input[data-code="${s.code}"]`);
-        const typeEl = wrap.querySelector(`.pay-type-select[data-code="${s.code}"]`);
-        if(!amountEl||!typeEl) continue;
-        const amount = amountEl.value.trim();
-        if(!amount||amount==='0') continue;
-        const st = await getStudent(s.code);
-        if(!st) continue;
+    document.getElementById('payGridSaveBtn').addEventListener('click', async ()=>{
+      const pending = [...wrap.querySelectorAll('.pg-cell.pending')];
+      if(!pending.length){ toast('علّم على خانة واحدة على الأقل'); return; }
+      const monthAmt = Number(document.getElementById('payGridMonthAmt').value)||0;
+      const paperAmt = Number(document.getElementById('payGridPaperAmt').value)||0;
+      const date = document.getElementById('payGridDate').value;
+      const needsPaper = pending.some(c=>c.dataset.term==='الورق');
+      const needsMonth = pending.some(c=>c.dataset.term!=='الورق');
+      if(needsMonth && monthAmt<=0){ toast('اكتب سعر الشهر الأول'); return; }
+      if(needsPaper && paperAmt<=0){ toast('اكتب سعر الورق الأول'); return; }
+      prefSet('payMonthAmt', monthAmt);
+      if(paperAmt>0) prefSet('payPaperAmt', paperAmt);
+      // نجمّع العلامات لكل طالب
+      const byCode = {};
+      pending.forEach(c=>{ (byCode[c.dataset.code] = byCode[c.dataset.code]||[]).push(c.dataset.term); });
+      const codes = Object.keys(byCode);
+      showLoading(`جاري حفظ المصروفات لـ ${codes.length} طالب...`);
+      let savedCells = 0, skippedFrozen = 0;
+      await Promise.all(codes.map(async code=>{
+        const st = await getStudent(code);
+        if(!st) return;
         st.payments = st.payments||[];
-        st.payments.push({amount, type:typeEl.value, date, note:''});
-        await saveStudent(s.code, st);
-        const row = document.getElementById(`payrow-${s.code}`);
-        if(row){ row.style.background='#E6F2EB'; row.style.opacity='.6'; }
-        saved++;
-      }
-      saveBtn.textContent='✅ تم الحفظ';
-      toast(`تم حفظ ${saved} دفعة ✅`);
+        byCode[code].forEach(term=>{
+          // الشهر المدفوع قبل كده متجمّد — مش بنسجله تاني
+          if(st.payments.some(p=>p.term===term && p.status==='paid')){ skippedFrozen++; return; }
+          const amount = term==='الورق' ? paperAmt : monthAmt;
+          st.payments.push({term, amount, status:'paid', date});
+          addLog(st, `سجّل مدفوعات: ${term} — ${amount} جنيه (مدفوع)`);
+          savedCells++;
+        });
+        await saveStudent(code, st);
+      }));
+      hideLoading();
+      toast(`✅ اتسجل ${savedCells} دفعة لـ ${codes.length} طالب${skippedFrozen?' — وتم تخطي '+skippedFrozen+' متجمّدة':''}`);
+      renderPayGrid(document.getElementById('payGridClass').value); // الخانات المحفوظة هتتجمّد
     });
-  });
+  }
+  document.getElementById('payGridClass').addEventListener('change', (e)=> renderPayGrid(e.target.value));
 
   function attBulkRowHTML(entry){
     return `
@@ -3273,7 +3258,7 @@ async function renderStudentEditor(){
     const delIdx5=Number(b.dataset.delExam); addLog(s,`حذف درجة امتحان: ${s.exams[delIdx5]?.name||''}`); s.exams.splice(delIdx5,1); await saveStudent(code,s); await syncStudentPoints(code, s.exams, s.bonusPoints); await syncStudentRisk(code, s); toast('🗑️ تم حذف الدرجة'); renderStudentEditor();
   }));
   $app.querySelectorAll('[data-del-pay]').forEach(b=>b.addEventListener('click', async ()=>{
-    const delIdx6=Number(b.dataset.delPay); addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); toast('🗑️ تم حذف سجل المصروفات'); renderStudentEditor();
+    const delIdx6=Number(b.dataset.delPay); if(!confirm('متأكد إنك عايز تمسح سجل الدفع ده؟')) return; addLog(s,`حذف مدفوعات: ${s.payments[delIdx6]?.term||''}`); s.payments.splice(delIdx6,1); await saveStudent(code,s); toast('🗑️ تم حذف سجل المصروفات'); renderStudentEditor();
   }));
   document.getElementById('delStudent').addEventListener('click', async ()=>{
     if(!confirm('متأكد من حذف الطالب؟ هتقدر تسترجعه بعدين من سلة المحذوفات.')) return;
